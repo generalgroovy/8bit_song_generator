@@ -1,380 +1,1190 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>8-Bit Loop Generator</title>
-  <style>
-    :root {
-      --bg: #0f1220;
-      --panel: #171b2e;
-      --panel-2: #1f2540;
-      --text: #edf2ff;
-      --muted: #a8b3d9;
-      --accent: #7cf7c5;
-      --accent-2: #8db7ff;
-      --danger: #ff7e9b;
-      --warning: #ffd479;
-      --border: #323a62;
-      --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(124, 247, 197, 0.08), transparent 28%),
-        radial-gradient(circle at top right, rgba(141, 183, 255, 0.10), transparent 34%),
-        linear-gradient(180deg, #0b0e18, var(--bg));
-      color: var(--text);
-      min-height: 100vh;
-      padding: 24px;
-    }
-    .app {
-      max-width: 1380px;
-      margin: 0 auto;
-      display: grid;
-      gap: 20px;
-      grid-template-columns: 370px 1fr;
-    }
-    .panel {
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-    .controls {
-      padding: 20px;
-      align-self: start;
-      position: sticky;
-      top: 20px;
-    }
-    h1 { margin: 0 0 6px; font-size: 1.8rem; }
-    .sub { color: var(--muted); font-size: 0.97rem; margin-bottom: 18px; line-height: 1.5; }
-    .toolbar, .mode-row, .save-row, .export-row, .toggles, .timeline-actions, .loop-actions {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-    button, select, input[type="range"], input[type="number"], input[type="text"] { width: 100%; }
-    button {
-      border: 0;
-      border-radius: 14px;
-      padding: 12px 14px;
-      font-size: 0.95rem;
-      font-weight: 700;
-      cursor: pointer;
-      color: #0c111d;
-      background: var(--accent);
-      transition: transform 0.15s ease, filter 0.15s ease;
-    }
-    button:hover { transform: translateY(-1px); filter: brightness(1.03); }
-    button.secondary { background: var(--accent-2); }
-    button.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
-    button.stop { background: var(--danger); }
-    button.warn { background: var(--warning); }
-    .section { padding: 14px 0 4px; border-top: 1px solid rgba(255,255,255,0.06); margin-top: 10px; }
-    .section h2 { margin: 0 0 10px; font-size: 0.98rem; color: var(--accent); letter-spacing: 0.04em; text-transform: uppercase; }
-    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .field { margin-bottom: 12px; }
-    .field label {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      font-size: 0.88rem; color: var(--muted); margin-bottom: 6px;
-    }
-    .field .value { color: var(--text); font-weight: 700; min-width: 3ch; text-align: right; }
-    select, input[type="number"], input[type="text"] {
-      background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
-      border-radius: 12px; padding: 10px 12px; font-size: 0.95rem;
-    }
-    input[type="range"] { appearance: none; height: 8px; border-radius: 999px; background: #2e375f; outline: none; }
-    input[type="range"]::-webkit-slider-thumb {
-      appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent);
-      box-shadow: 0 0 0 3px rgba(124,247,197,0.18); cursor: pointer;
-    }
-    .toggle, .mode-chip {
-      display: flex; align-items: center; gap: 10px; background: var(--panel-2); border: 1px solid var(--border);
-      border-radius: 12px; padding: 10px 12px; font-size: 0.92rem; color: var(--text);
-    }
-    .toggle input, .mode-chip input { accent-color: var(--accent); }
-    .main { display: grid; grid-template-rows: auto auto auto auto 1fr; gap: 20px; min-width: 0; }
-    .hero { padding: 20px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
-    .card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 18px; padding: 16px; min-width: 0; }
-    .now-playing, .visualizer-wrap, .timeline-panel, .library-panel { display: grid; gap: 10px; }
-    .kicker {
-      display: inline-flex; width: fit-content; align-items: center; gap: 8px; border-radius: 999px; padding: 7px 11px;
-      font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #081018;
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-    }
-    .title-row { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; }
-    .title-row h2 { margin: 0; font-size: 1.6rem; }
-    .meta, .loop-meta { display: flex; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: 0.95rem; }
-    .pill { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 999px; padding: 8px 12px; }
-    canvas {
-      width: 100%; height: 180px; display: block;
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
-                  repeating-linear-gradient(to right, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, transparent 1px, transparent 20px),
-                  linear-gradient(180deg, #0e1322, #0a0f1a);
-      border-radius: 18px; border: 1px solid rgba(255,255,255,0.08);
-    }
-    .status-grid { display: grid; gap: 16px; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0 20px 20px; }
-    .status-card { padding: 16px; }
-    .label { color: var(--muted); font-size: 0.84rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-    .big { font-size: 1.8rem; font-weight: 800; margin-bottom: 6px; }
-    .small { color: var(--muted); line-height: 1.45; font-size: 0.92rem; }
-    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-    .library-panel, .timeline-panel, .tracks { padding: 20px; }
-    .saved-loops { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-    .loop-chip, .timeline-item {
-      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 14px;
-      display: grid; gap: 10px; cursor: grab;
-    }
-    .timeline-item { position: relative; min-width: 220px; flex: 1 1 220px; background: linear-gradient(180deg, rgba(141,183,255,0.14), rgba(255,255,255,0.03)); border-color: rgba(141,183,255,0.28); }
-    .timeline-item.playing { border-color: var(--accent); box-shadow: inset 0 0 0 1px rgba(124,247,197,0.35); }
-    .loop-top { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
-    .loop-name { font-weight: 800; font-size: 1rem; }
-    .timeline-dropzone {
-      min-height: 130px; border: 2px dashed rgba(141,183,255,0.35); border-radius: 18px; padding: 12px;
-      background: rgba(255,255,255,0.02); display: grid; gap: 12px; align-items: start;
-    }
-    .timeline-dropzone.dragover { border-color: var(--accent); background: rgba(124,247,197,0.06); }
-    .timeline-items { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
-    .timeline-order { position: absolute; top: 10px; right: 10px; font-size: 0.8rem; color: var(--muted); }
-    .tracks { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .steps { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 6px; }
-    .step { aspect-ratio: 1 / 1; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); position: relative; overflow: hidden; }
-    .step.active::before, .step.playing::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
-    .step.active::before { background: linear-gradient(180deg, rgba(124,247,197,0.55), rgba(124,247,197,0.18)); }
-    .step.playing::after { box-shadow: inset 0 0 0 2px rgba(141,183,255,0.95); }
-    .tooltip {
-      position: fixed; z-index: 1000; max-width: 280px; pointer-events: none; background: rgba(6, 10, 18, 0.96);
-      border: 1px solid rgba(141,183,255,0.34); color: var(--text); padding: 10px 12px; border-radius: 12px;
-      box-shadow: 0 14px 28px rgba(0,0,0,0.35); font-size: 0.84rem; line-height: 1.45; opacity: 0; transform: translateY(6px);
-      transition: opacity 0.12s ease, transform 0.12s ease;
-    }
-    .tooltip.visible { opacity: 1; transform: translateY(0); }
-    .hidden { display: none !important; }
-    .footer-note { color: var(--muted); font-size: 0.86rem; line-height: 1.5; padding-top: 10px; }
-    @media (max-width: 1140px) {
-      .app { grid-template-columns: 1fr; }
-      .controls { position: static; }
-      .hero, .tracks { grid-template-columns: 1fr; }
-      .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 680px) {
-      body { padding: 14px; }
-      .field-grid, .toolbar, .mode-row, .save-row, .export-row, .toggles, .timeline-actions, .loop-actions, .status-grid { grid-template-columns: 1fr; }
-      .steps { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-      .timeline-items { flex-direction: column; }
-    }
-  </style>
-</head>
-<body>
-  <div class="app">
-    <aside class="panel controls">
-      <h1>8-Bit Loop Generator</h1>
-      <div class="sub">Generate chiptune loops, save them to a clip library, arrange them on a timeline, and export performances.</div>
-      <div class="toolbar">
-        <button id="playBtn" data-tooltip="Starts playback. In Loop mode it repeats the current loop. In Timeline mode it plays the arranged clips in order.">▶ Play</button>
-        <button id="randomBtn" class="secondary" data-tooltip="Randomizes multiple musical settings at once for instant inspiration.">🎲 Randomize</button>
-        <button id="stopBtn" class="stop" data-tooltip="Stops playback and resets the transport to the beginning.">■ Stop</button>
-        <button id="rerollBtn" class="ghost" data-tooltip="Keeps the current parameter settings but generates a fresh pattern using a new seed.">↻ New Pattern</button>
-      </div>
-      <div class="section">
-        <h2>Mode</h2>
-        <div class="mode-row">
-          <label class="mode-chip" data-tooltip="Loop mode repeats the currently edited loop endlessly so you can audition and tweak it."><input type="radio" name="playMode" value="loop" id="modeLoop" checked> Loop Mode</label>
-          <label class="mode-chip" data-tooltip="Timeline mode plays saved clips from left to right according to the timeline arrangement."><input type="radio" name="playMode" value="timeline" id="modeTimeline"> Timeline Mode</label>
-        </div>
-      </div>
-      <div class="section">
-        <h2>Save & Export</h2>
-        <div class="field">
-          <label for="loopNameInput">Loop Name</label>
-          <input id="loopNameInput" type="text" value="New Loop" placeholder="Give this loop a name" data-tooltip="Name used when saving the current loop into the clip library.">
-        </div>
-        <div class="save-row">
-          <button id="saveLoopBtn" class="secondary" data-tooltip="Saves the current pattern and all sound settings as a reusable loop clip in the library below.">💾 Save Loop</button>
-          <button id="clearTimelineBtn" class="ghost" data-tooltip="Removes every clip from the timeline arrangement without deleting your saved loop library.">Clear Timeline</button>
-        </div>
-        <div class="export-row" style="margin-top:10px;">
-          <button id="exportLoopBtn" class="warn" data-tooltip="Renders the current loop and downloads it as audio. This version exports WAV in-browser for reliability.">Export Loop</button>
-          <button id="exportTimelineBtn" class="warn" data-tooltip="Renders the entire arranged timeline and downloads it as audio. This version exports WAV in-browser for reliability.">Export Timeline</button>
-        </div>
-        <div class="footer-note">This implementation exports WAV in-browser. True MP3 export can be added later by wiring in an encoder like lamejs.</div>
-      </div>
-      <div class="section">
-        <h2>Song</h2>
-        <div class="field-grid">
-          <div class="field"><label for="keySelect">Key</label><select id="keySelect" data-tooltip="Sets the tonal center. Changing the key transposes the generated notes to a different root note."></select></div>
-          <div class="field"><label for="scaleSelect">Scale</label><select id="scaleSelect" data-tooltip="Changes the note collection used to generate melodies and harmony, shifting the emotional color of the loop."><option value="major">Major</option><option value="natural_minor">Natural Minor</option><option value="harmonic_minor">Harmonic Minor</option><option value="melodic_minor">Melodic Minor</option><option value="dorian">Dorian</option><option value="phrygian">Phrygian</option><option value="lydian">Lydian</option><option value="mixolydian">Mixolydian</option><option value="locrian">Locrian</option><option value="pentatonic_major">Pentatonic Major</option><option value="pentatonic_minor">Pentatonic Minor</option><option value="blues">Blues</option><option value="whole_tone">Whole Tone</option><option value="chromatic">Chromatic</option><option value="double_harmonic">Double Harmonic</option><option value="hungarian_minor">Hungarian Minor</option><option value="persian">Persian</option><option value="ukrainian_dorian">Ukrainian Dorian</option><option value="romanian_minor">Romanian Minor</option><option value="phrygian_dominant">Phrygian Dominant</option><option value="lydian_dominant">Lydian Dominant</option><option value="altered">Altered</option><option value="diminished_whole_half">Diminished Whole-Half</option><option value="diminished_half_whole">Diminished Half-Whole</option><option value="hirajoshi">Hirajoshi</option><option value="in_sen">In Sen</option><option value="iwato">Iwato</option><option value="yo">Yo</option><option value="enigmatic">Enigmatic</option><option value="bebop_major">Bebop Major</option><option value="bebop_dominant">Bebop Dominant</option></select></div>
-          <div class="field"><label for="tempoRange">Speed <span class="value" id="tempoValue"></span></label><input id="tempoRange" type="range" min="70" max="190" step="1" value="120" data-tooltip="Sets the tempo in BPM. Higher values make the loop feel more energetic and compressed in time."></div>
-          <div class="field"><label for="barsRange">Loop Bars <span class="value" id="barsValue"></span></label><input id="barsRange" type="range" min="1" max="8" step="1" value="4" data-tooltip="Controls how many bars long the generated loop is before it repeats."></div>
-          <div class="field"><label for="swingRange">Swing <span class="value" id="swingValue"></span></label><input id="swingRange" type="range" min="0" max="0.35" step="0.01" value="0.08" data-tooltip="Delays every other 16th note slightly, creating a groovier and less mechanical rhythm."></div>
-          <div class="field"><label for="seedInput">Seed</label><input id="seedInput" type="number" min="1" max="999999" step="1" value="4312" data-tooltip="A repeatable random seed. Reusing the same seed and settings recreates the same loop pattern."></div>
-        </div>
-      </div>
-      <div class="section">
-        <h2>Melody</h2>
-        <div class="field-grid">
-          <div class="field"><label for="densityRange">Note Density <span class="value" id="densityValue"></span></label><input id="densityRange" type="range" min="0.2" max="1" step="0.01" value="0.68" data-tooltip="Controls how often melody notes occur. Higher density creates busier melodic lines."></div>
-          <div class="field"><label for="variationRange">Variation <span class="value" id="variationValue"></span></label><input id="variationRange" type="range" min="0" max="1" step="0.01" value="0.46" data-tooltip="Increases melodic surprises, rhythmic changes, and less predictable bass and drum decisions."></div>
-          <div class="field"><label for="octaveRange">Lead Octave <span class="value" id="octaveValue"></span></label><input id="octaveRange" type="range" min="3" max="6" step="1" value="4" data-tooltip="Moves the melody register up or down. Lower octaves sound weightier, higher octaves sound more piercing."></div>
-          <div class="field"><label for="arpRange">Arpeggio Bias <span class="value" id="arpValue"></span></label><input id="arpRange" type="range" min="0" max="1" step="0.01" value="0.42" data-tooltip="Higher values make the lead line favor chord tones and arpeggio-like note choices."></div>
-        </div>
-      </div>
-      <div class="section">
-        <h2>Sound</h2>
-        <div class="field-grid">
-          <div class="field"><label for="leadWaveSelect">Lead Wave</label><select id="leadWaveSelect" data-tooltip="Chooses the oscillator shape for the lead voice. Square is classic chiptune, triangle is softer, saw is brighter."><option value="square">Square</option><option value="sawtooth">Sawtooth</option><option value="triangle">Triangle</option></select></div>
-          <div class="field"><label for="bassWaveSelect">Bass Wave</label><select id="bassWaveSelect" data-tooltip="Chooses the oscillator shape for the bass voice and changes its tone and bite."><option value="square">Square</option><option value="triangle" selected>Triangle</option><option value="sawtooth">Sawtooth</option></select></div>
-          <div class="field"><label for="echoRange">Echo <span class="value" id="echoValue"></span></label><input id="echoRange" type="range" min="0" max="0.45" step="0.01" value="0.14" data-tooltip="Adds repeated delayed reflections. More echo makes the loop feel larger and more spacious."></div>
-          <div class="field"><label for="bitcrushRange">Crunch <span class="value" id="bitcrushValue"></span></label><input id="bitcrushRange" type="range" min="0" max="0.95" step="0.01" value="0.35" data-tooltip="Reduces fidelity to create a lo-fi digital grit closer to vintage game-console texture."></div>
-        </div>
-      </div>
-      <div class="section">
-        <h2>Tracks</h2>
-        <div class="toggles">
-          <label class="toggle" data-tooltip="Enables or disables the lead melody track."><input id="leadToggle" type="checkbox" checked> Lead</label>
-          <label class="toggle" data-tooltip="Enables or disables the bass track."><input id="bassToggle" type="checkbox" checked> Bass</label>
-          <label class="toggle" data-tooltip="Enables or disables the drum synthesis layer."><input id="drumsToggle" type="checkbox" checked> Drums</label>
-          <label class="toggle" data-tooltip="Enables or disables background harmony notes and pads."><input id="harmonyToggle" type="checkbox" checked> Harmony</label>
-        </div>
-      </div>
-    </aside>
+<script>
+  const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
-    <main class="main">
-      <section class="panel hero">
-        <div class="card now-playing">
-          <span class="kicker">Live Chiptune Engine</span>
-          <div class="title-row"><h2 id="songTitle">C Minor Loop</h2><div class="pill" id="playState">Stopped</div></div>
-          <div class="meta"><span class="pill" id="metaTempo">120 BPM</span><span class="pill" id="metaBars">4 Bars</span><span class="pill" id="metaScale">Minor</span><span class="pill" id="metaSeed">Seed 4312</span><span class="pill" id="metaMode">Loop Mode</span></div>
-          <div class="small" id="loopSummary">Retro loop with syncopated lead, root-heavy bass, and a simple drum groove.</div>
-        </div>
-        <div class="card visualizer-wrap"><div class="label">Output Visualizer</div><canvas id="viz" width="720" height="180"></canvas><div class="small">Blue cursor = current step. Green cells = active notes in the current 16-step view.</div></div>
-      </section>
-      <section class="status-grid">
-        <div class="panel status-card"><div class="label">Current Bar</div><div class="big" id="currentBar">1 / 4</div><div class="small">The loop is quantized into 16th notes with a 4/4 feel.</div></div>
-        <div class="panel status-card"><div class="label">Step</div><div class="big" id="currentStep">1 / 16</div><div class="small">Step view follows the active bar while the transport runs.</div></div>
-        <div class="panel status-card"><div class="label">Mood</div><div class="big" id="moodLabel">Bouncy</div><div class="small" id="moodDetail">Square-wave lead with moderate swing and medium variation.</div></div>
-        <div class="panel status-card"><div class="label">Timeline Clips</div><div class="big" id="timelineCount">0</div><div class="small">Saved clips can be dragged from the library onto the timeline.</div></div>
-      </section>
-      <section class="panel library-panel">
-        <div class="panel-head"><div><div class="label">Saved Loop Library</div><div class="small">Save loop snapshots here, then drag them into the timeline arranger.</div></div></div>
-        <div id="savedLoops" class="saved-loops"></div>
-      </section>
-      <section class="panel timeline-panel">
-        <div class="panel-head"><div><div class="label">Timeline Arranger</div><div class="small">Drag saved loops here to build a song. Drag clips left or right to reorder them.</div></div><div class="pill" id="timelineDuration">0.0s total</div></div>
-        <div id="timelineDropzone" class="timeline-dropzone" data-tooltip="Drop saved loops here to create an arrangement. Timeline playback follows this order from left to right.">
-          <div id="timelineEmpty" class="small">Drop a saved loop here to add it to the timeline.</div>
-          <div id="timelineItems" class="timeline-items"></div>
-        </div>
-      </section>
-      <section class="panel tracks">
-        <div class="card"><h3>Lead</h3><div class="steps" id="leadSteps"></div></div>
-        <div class="card"><h3>Bass</h3><div class="steps" id="bassSteps"></div></div>
-        <div class="card"><h3>Drums</h3><div class="steps" id="drumSteps"></div></div>
-      </section>
-    </main>
-  </div>
-  <div id="tooltip" class="tooltip"></div>
+  const SCALE_LABELS = {
+    major: "Major",
+    natural_minor: "Natural Minor",
+    harmonic_minor: "Harmonic Minor",
+    melodic_minor: "Melodic Minor",
+    dorian: "Dorian",
+    phrygian: "Phrygian",
+    lydian: "Lydian",
+    mixolydian: "Mixolydian",
+    locrian: "Locrian",
+    pentatonic_major: "Pentatonic Major",
+    pentatonic_minor: "Pentatonic Minor",
+    blues: "Blues",
+    whole_tone: "Whole Tone",
+    chromatic: "Chromatic",
+    double_harmonic: "Double Harmonic",
+    hungarian_minor: "Hungarian Minor",
+    persian: "Persian",
+    ukrainian_dorian: "Ukrainian Dorian",
+    romanian_minor: "Romanian Minor",
+    phrygian_dominant: "Phrygian Dominant",
+    lydian_dominant: "Lydian Dominant",
+    altered: "Altered",
+    diminished_whole_half: "Diminished Whole-Half",
+    diminished_half_whole: "Diminished Half-Whole",
+    hirajoshi: "Hirajoshi",
+    in_sen: "In Sen",
+    iwato: "Iwato",
+    yo: "Yo",
+    enigmatic: "Enigmatic",
+    bebop_major: "Bebop Major",
+    bebop_dominant: "Bebop Dominant"
+  };
 
-  <script>
-    const NOTES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-    const SCALES = {
-      major:[0,2,4,5,7,9,11],
-      natural_minor:[0,2,3,5,7,8,10],
-      harmonic_minor:[0,2,3,5,7,8,11],
-      melodic_minor:[0,2,3,5,7,9,11],
-      dorian:[0,2,3,5,7,9,10],
-      phrygian:[0,1,3,5,7,8,10],
-      lydian:[0,2,4,6,7,9,11],
-      mixolydian:[0,2,4,5,7,9,10],
-      locrian:[0,1,3,5,6,8,10],
-      pentatonic_major:[0,2,4,7,9],
-      pentatonic_minor:[0,3,5,7,10],
-      blues:[0,3,5,6,7,10],
-      whole_tone:[0,2,4,6,8,10],
-      chromatic:[0,1,2,3,4,5,6,7,8,9,10,11],
-      double_harmonic:[0,1,4,5,7,8,11],
-      hungarian_minor:[0,2,3,6,7,8,11],
-      persian:[0,1,4,5,6,8,11],
-      ukrainian_dorian:[0,2,3,6,7,9,10],
-      romanian_minor:[0,2,3,6,7,9,10],
-      phrygian_dominant:[0,1,4,5,7,8,10],
-      lydian_dominant:[0,2,4,6,7,9,10],
-      altered:[0,1,3,4,6,8,10],
-      diminished_whole_half:[0,2,3,5,6,8,9,11],
-      diminished_half_whole:[0,1,3,4,6,7,9,10],
-      hirajoshi:[0,2,3,7,8],
-      in_sen:[0,1,5,7,10],
-      iwato:[0,1,5,6,10],
-      yo:[0,2,5,7,9],
-      enigmatic:[0,1,4,6,8,10,11],
-      bebop_major:[0,2,4,5,7,8,9,11],
-      bebop_dominant:[0,2,4,5,7,9,10,11]
+  const SCALES = {
+    major: [0, 2, 4, 5, 7, 9, 11],
+    natural_minor: [0, 2, 3, 5, 7, 8, 10],
+    harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
+    melodic_minor: [0, 2, 3, 5, 7, 9, 11],
+    dorian: [0, 2, 3, 5, 7, 9, 10],
+    phrygian: [0, 1, 3, 5, 7, 8, 10],
+    lydian: [0, 2, 4, 6, 7, 9, 11],
+    mixolydian: [0, 2, 4, 5, 7, 9, 10],
+    locrian: [0, 1, 3, 5, 6, 8, 10],
+    pentatonic_major: [0, 2, 4, 7, 9],
+    pentatonic_minor: [0, 3, 5, 7, 10],
+    blues: [0, 3, 5, 6, 7, 10],
+    whole_tone: [0, 2, 4, 6, 8, 10],
+    chromatic: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    double_harmonic: [0, 1, 4, 5, 7, 8, 11],
+    hungarian_minor: [0, 2, 3, 6, 7, 8, 11],
+    persian: [0, 1, 4, 5, 6, 8, 11],
+    ukrainian_dorian: [0, 2, 3, 6, 7, 9, 10],
+    romanian_minor: [0, 2, 3, 6, 7, 9, 10],
+    phrygian_dominant: [0, 1, 4, 5, 7, 8, 10],
+    lydian_dominant: [0, 2, 4, 6, 7, 9, 10],
+    altered: [0, 1, 3, 4, 6, 8, 10],
+    diminished_whole_half: [0, 2, 3, 5, 6, 8, 9, 11],
+    diminished_half_whole: [0, 1, 3, 4, 6, 7, 9, 10],
+    hirajoshi: [0, 2, 3, 7, 8],
+    in_sen: [0, 1, 5, 7, 10],
+    iwato: [0, 1, 5, 6, 10],
+    yo: [0, 2, 5, 7, 9],
+    enigmatic: [0, 1, 4, 6, 8, 10, 11],
+    bebop_major: [0, 2, 4, 5, 7, 8, 9, 11],
+    bebop_dominant: [0, 2, 4, 5, 7, 9, 10, 11]
+  };
+
+  const ui = Object.fromEntries([...document.querySelectorAll("[id]")].map(el => [el.id, el]));
+
+  function safePrettyScale(scaleKey) {
+    return SCALE_LABELS[scaleKey] || scaleKey.split("_").map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+  }
+
+  function populateKeySelect() {
+    if (!ui.keySelect) return;
+    ui.keySelect.innerHTML = "";
+    for (const note of NOTES) {
+      const option = document.createElement("option");
+      option.value = note;
+      option.textContent = note;
+      ui.keySelect.appendChild(option);
+    }
+  }
+
+  function populateScaleSelect() {
+    if (!ui.scaleSelect) return;
+    ui.scaleSelect.innerHTML = "";
+    for (const [key, label] of Object.entries(SCALE_LABELS)) {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = label;
+      ui.scaleSelect.appendChild(option);
+    }
+  }
+
+  const state = {
+    params: {
+      key: "C",
+      scale: "natural_minor",
+      tempo: 120,
+      bars: 4,
+      swing: 0.08,
+      density: 0.68,
+      variation: 0.46,
+      octave: 4,
+      arpBias: 0.42,
+      echo: 0.14,
+      crunch: 0.35,
+      seed: 4312,
+      leadWave: "square",
+      bassWave: "triangle",
+      leadOn: true,
+      bassOn: true,
+      drumsOn: true,
+      harmonyOn: true
+    },
+    loop: null,
+    playMode: "loop",
+    isPlaying: false,
+    audio: null,
+    stepIndex: 0,
+    nextStepTime: 0,
+    currentBar: 0,
+    currentStepInBar: 0,
+    intervalId: null,
+    analyserData: null,
+    vizFrame: null,
+    savedLoops: [],
+    timeline: [],
+    activeTimelineClipIndex: 0,
+    draggedLoopId: null,
+    draggedTimelineId: null
+  };
+
+  const clone = (x) => JSON.parse(JSON.stringify(x));
+  const uid = (prefix) => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+  const midiToFreq = (m) => 440 * Math.pow(2, (m - 69) / 12);
+
+  function mulberry32(seed) {
+    let t = seed >>> 0;
+    return function () {
+      t += 0x6D2B79F5;
+      let r = Math.imul(t ^ (t >>> 15), 1 | t);
+      r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
     };
-    const ui = Object.fromEntries([...document.querySelectorAll('[id]')].map(el => [el.id, el]));
-    NOTES.forEach(note => { const o=document.createElement('option'); o.value=note; o.textContent=note; if(note==='C') o.selected=true; ui.keySelect.appendChild(o); });
+  }
 
-    const state = {
-      params: { key:'C', scale:'natural_minor', tempo:120, bars:4, swing:0.08, density:0.68, variation:0.46, octave:4, arpBias:0.42, echo:0.14, crunch:0.35, seed:4312, leadWave:'square', bassWave:'triangle', leadOn:true, bassOn:true, drumsOn:true, harmonyOn:true },
-      loop: null, playMode:'loop', isPlaying:false, audio:null, stepIndex:0, nextStepTime:0, currentBar:0, currentStepInBar:0, intervalId:null, analyserData:null, vizFrame:null,
-      savedLoops:[], timeline:[], activeTimelineClipIndex:0, draggedLoopId:null, draggedTimelineId:null
-    };
+  const pick = (rng, arr) => arr[Math.floor(rng() * arr.length)];
+  const chance = (rng, p) => rng() < p;
 
-    const clone = x => JSON.parse(JSON.stringify(x));
-    const uid = p => `${p}_${Math.random().toString(36).slice(2,10)}`;
-    const midiToFreq = m => 440 * Math.pow(2, (m - 69) / 12);
-    function mulberry32(seed){ let t=seed>>>0; return function(){ t+=0x6D2B79F5; let r=Math.imul(t^(t>>>15),1|t); r^=r+Math.imul(r^(r>>>7),61|r); return ((r^(r>>>14))>>>0)/4294967296; }; }
-    const pick = (rng,a)=>a[Math.floor(rng()*a.length)];
-    const chance=(rng,p)=>rng()<p;
-    function noteNameFromMidi(midi){ const name=NOTES[((midi%12)+12)%12]; const octave=Math.floor(midi/12)-1; return `${name}${octave}`; }
+  function noteNameFromMidi(midi) {
+    const name = NOTES[((midi % 12) + 12) % 12];
+    const octave = Math.floor(midi / 12) - 1;
+    return `${name}${octave}`;
+  }
 
-    function createBitCrusher(ctx, amount){ const node=ctx.createScriptProcessor(512,1,1); const bits=Math.max(1, Math.round(16-amount*12)); const normFreq=Math.max(0.03, 1-amount*0.88); let phaser=0,last=0; node.onaudioprocess=e=>{ const i=e.inputBuffer.getChannelData(0), o=e.outputBuffer.getChannelData(0), step=Math.pow(0.5,bits); for(let n=0;n<i.length;n++){ phaser+=normFreq; if(phaser>=1){ phaser-=1; last=step*Math.floor(i[n]/step+0.5);} o[n]=last; } }; return node; }
-    function initAudio(){ if(state.audio) return; const AC=window.AudioContext||window.webkitAudioContext; const ctx=new AC(); const master=ctx.createGain(), dry=ctx.createGain(), delay=ctx.createDelay(0.4), feedback=ctx.createGain(), wet=ctx.createGain(), filter=ctx.createBiquadFilter(), crusher=createBitCrusher(ctx,state.params.crunch), analyser=ctx.createAnalyser(); master.gain.value=0.72; dry.gain.value=0.82; wet.gain.value=state.params.echo; delay.delayTime.value=0.18; feedback.gain.value=0.25; delay.connect(feedback); feedback.connect(delay); delay.connect(wet); filter.type='lowpass'; filter.frequency.value=6800; dry.connect(filter); wet.connect(filter); filter.connect(crusher); crusher.connect(analyser); analyser.connect(master); master.connect(ctx.destination); analyser.fftSize=1024; state.audio={ctx,master,dry,delay,feedback,wet,filter,crusher,analyser}; state.analyserData=new Uint8Array(analyser.frequencyBinCount); updateFx(); startVisualizer(); }
-    function resetCrusher(){ if(!state.audio) return; const {ctx,filter,analyser,wet,dry,master,crusher}=state.audio; try{dry.disconnect();wet.disconnect();filter.disconnect();crusher.disconnect();}catch{} const newCrusher=createBitCrusher(ctx,state.params.crunch); dry.connect(filter); wet.connect(filter); filter.connect(newCrusher); newCrusher.connect(analyser); analyser.connect(master); state.audio.crusher=newCrusher; }
-    function updateFx(){ if(!state.audio) return; state.audio.wet.gain.value=state.params.echo; state.audio.delay.delayTime.value=Math.min(0.3,60/state.params.tempo/2); state.audio.feedback.gain.value=0.15+state.params.echo*0.55; state.audio.filter.frequency.value=3500+(1-state.params.crunch)*4200; resetCrusher(); }
-    function getScaleMidis(root, scale, octave){ const rootIndex=NOTES.indexOf(root), intervals=SCALES[scale]||SCALES.minor, base=12*(octave+1)+rootIndex, out=[]; for(let oct=0; oct<3; oct++) intervals.forEach(i=>out.push(base+i+oct*12)); return out; }
-    function generateLoopFromParams(p){ const rng=mulberry32(Number(p.seed)||1), totalSteps=p.bars*16, leadScale=getScaleMidis(p.key,p.scale,p.octave), bassScale=getScaleMidis(p.key,p.scale,Math.max(1,p.octave-2)), chordDegrees=[0,3,4,5], progression=Array.from({length:p.bars},()=>pick(rng,chordDegrees)), lead=[], bass=[], drums=[], harmony=[]; let prevLead=leadScale[0];
-      for(let step=0; step<totalSteps; step++){
-        const bar=Math.floor(step/16), pos=step%16, strongBeat=pos%4===0, offbeat=pos%2===1, degree=progression[bar%progression.length];
-        const chordPool=[degree,degree+2,degree+4].map(i=>leadScale[i%leadScale.length]);
-        const melodicPool=[...new Set([leadScale[degree%leadScale.length],leadScale[(degree+1)%leadScale.length],leadScale[(degree+2)%leadScale.length],leadScale[(degree+4)%leadScale.length],leadScale[(degree+6)%leadScale.length]])].sort((a,b)=>a-b);
-        let leadNote=null; const shouldPlay=chance(rng, Math.min(0.97,p.density+(strongBeat?0.16:0)-(offbeat?0.06:0)));
-        if(shouldPlay){ let candidate=pick(rng, chance(rng,p.arpBias)?chordPool:melodicPool); if(chance(rng,p.variation*0.65)) candidate+=pick(rng,[-12,0,0,12]); while(Math.abs(candidate-prevLead)>8) candidate+=candidate>prevLead?-12:12; prevLead=candidate; leadNote={midi:candidate,len:strongBeat?1:(chance(rng,0.14)?2:1),vel:strongBeat?0.9:0.74}; }
-        lead.push(leadNote);
-        let bassNote=null; if(strongBeat||chance(rng,0.16+p.variation*0.24)){ const bassDegree=chance(rng,0.18+p.variation*0.3)?degree+4:degree; bassNote={midi:bassScale[bassDegree%bassScale.length]-12,len:strongBeat?2:1,vel:strongBeat?0.86:0.68}; } bass.push(bassNote);
-        drums.push({ kick: strongBeat || (pos===10 && chance(rng,0.45+p.variation*0.3)), snare: pos===4 || pos===12 || (chance(rng,p.variation*0.16)&&(pos===7||pos===15)), hat: chance(rng,0.52+p.density*0.3) || pos%4===2 });
-        let harmonyNotes=null; if(pos===0||pos===8||(chance(rng,p.variation*0.12)&&pos===12)){ const root=leadScale[degree%leadScale.length]-12; const minorish=['natural_minor','harmonic_minor','melodic_minor','dorian','phrygian','locrian','hungarian_minor','persian','romanian_minor','ukrainian_dorian','blues','phrygian_dominant','altered','iwato','in_sen']; harmonyNotes=[root, root+(minorish.includes(p.scale)?3:4), root+7]; } harmony.push(harmonyNotes);
+  function createBitCrusher(ctx, amount) {
+    const node = ctx.createScriptProcessor(512, 1, 1);
+    const bits = Math.max(1, Math.round(16 - amount * 12));
+    const normFreq = Math.max(0.03, 1 - amount * 0.88);
+    let phaser = 0;
+    let last = 0;
+
+    node.onaudioprocess = (e) => {
+      const input = e.inputBuffer.getChannelData(0);
+      const output = e.outputBuffer.getChannelData(0);
+      const step = Math.pow(0.5, bits);
+
+      for (let i = 0; i < input.length; i++) {
+        phaser += normFreq;
+        if (phaser >= 1) {
+          phaser -= 1;
+          last = step * Math.floor(input[i] / step + 0.5);
+        }
+        output[i] = last;
       }
-      return {lead,bass,drums,harmony,progression,totalSteps};
+    };
+
+    return node;
+  }
+
+  function initAudio() {
+    if (state.audio) return;
+
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AC();
+
+    const master = ctx.createGain();
+    const dry = ctx.createGain();
+    const delay = ctx.createDelay(0.4);
+    const feedback = ctx.createGain();
+    const wet = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const crusher = createBitCrusher(ctx, state.params.crunch);
+    const analyser = ctx.createAnalyser();
+
+    master.gain.value = 0.72;
+    dry.gain.value = 0.82;
+    wet.gain.value = state.params.echo;
+    delay.delayTime.value = 0.18;
+    feedback.gain.value = 0.25;
+
+    delay.connect(feedback);
+    feedback.connect(delay);
+    delay.connect(wet);
+
+    filter.type = "lowpass";
+    filter.frequency.value = 6800;
+
+    dry.connect(filter);
+    wet.connect(filter);
+    filter.connect(crusher);
+    crusher.connect(analyser);
+    analyser.connect(master);
+    master.connect(ctx.destination);
+
+    analyser.fftSize = 1024;
+
+    state.audio = { ctx, master, dry, delay, feedback, wet, filter, crusher, analyser };
+    state.analyserData = new Uint8Array(analyser.frequencyBinCount);
+
+    updateFx();
+    startVisualizer();
+  }
+
+  function resetCrusher() {
+    if (!state.audio) return;
+
+    const { ctx, filter, analyser, wet, dry, master, crusher } = state.audio;
+    try {
+      dry.disconnect();
+      wet.disconnect();
+      filter.disconnect();
+      crusher.disconnect();
+    } catch {}
+
+    const newCrusher = createBitCrusher(ctx, state.params.crunch);
+    dry.connect(filter);
+    wet.connect(filter);
+    filter.connect(newCrusher);
+    newCrusher.connect(analyser);
+    analyser.connect(master);
+    state.audio.crusher = newCrusher;
+  }
+
+  function updateFx() {
+    if (!state.audio) return;
+    state.audio.wet.gain.value = state.params.echo;
+    state.audio.delay.delayTime.value = Math.min(0.3, 60 / state.params.tempo / 2);
+    state.audio.feedback.gain.value = 0.15 + state.params.echo * 0.55;
+    state.audio.filter.frequency.value = 3500 + (1 - state.params.crunch) * 4200;
+    resetCrusher();
+  }
+
+  function getScaleMidis(root, scale, octave) {
+    const rootIndex = NOTES.indexOf(root);
+    const intervals = SCALES[scale] || SCALES.natural_minor;
+    const base = 12 * (octave + 1) + rootIndex;
+    const out = [];
+    for (let oct = 0; oct < 3; oct++) {
+      intervals.forEach((i) => out.push(base + i + oct * 12));
     }
-    function generateLoop(){ state.loop=generateLoopFromParams(state.params); refreshUI(); }
+    return out;
+  }
 
-    function readInputs(){ Object.assign(state.params,{ key:ui.keySelect.value, scale:ui.scaleSelect.value, tempo:+ui.tempoRange.value, bars:+ui.barsRange.value, swing:+ui.swingRange.value, density:+ui.densityRange.value, variation:+ui.variationRange.value, octave:+ui.octaveRange.value, arpBias:+ui.arpRange.value, echo:+ui.echoRange.value, crunch:+ui.bitcrushRange.value, seed:Math.max(1,+ui.seedInput.value||1), leadWave:ui.leadWaveSelect.value, bassWave:ui.bassWaveSelect.value, leadOn:ui.leadToggle.checked, bassOn:ui.bassToggle.checked, drumsOn:ui.drumsToggle.checked, harmonyOn:ui.harmonyToggle.checked }); state.playMode = ui.modeTimeline.checked ? 'timeline' : 'loop'; }
-    function syncInputs(){ const p=state.params; ui.keySelect.value=p.key; ui.scaleSelect.value=p.scale; ui.tempoRange.value=p.tempo; ui.barsRange.value=p.bars; ui.swingRange.value=p.swing; ui.densityRange.value=p.density; ui.variationRange.value=p.variation; ui.octaveRange.value=p.octave; ui.arpRange.value=p.arpBias; ui.echoRange.value=p.echo; ui.bitcrushRange.value=p.crunch; ui.seedInput.value=p.seed; ui.leadWaveSelect.value=p.leadWave; ui.bassWaveSelect.value=p.bassWave; ui.leadToggle.checked=p.leadOn; ui.bassToggle.checked=p.bassOn; ui.drumsToggle.checked=p.drumsOn; ui.harmonyToggle.checked=p.harmonyOn; ui.modeLoop.checked=state.playMode==='loop'; ui.modeTimeline.checked=state.playMode==='timeline'; refreshUI(); }
-    function describeMood(){ const p=state.params, moods=[]; if(['natural_minor','harmonic_minor','melodic_minor','phrygian','locrian','hungarian_minor','persian','romanian_minor','double_harmonic','phrygian_dominant','altered','iwato','in_sen','enigmatic'].includes(p.scale)) moods.push('moody'); if(['major','lydian','mixolydian','pentatonic_major','yo','bebop_major'].includes(p.scale)) moods.push('bright'); if(p.tempo>=150) moods.push('hyper'); else if(p.tempo<=95) moods.push('laid-back'); else moods.push('bouncy'); if(p.swing>=0.2) moods.push('shuffled'); if(p.variation>=0.68) moods.push('playful'); if(p.crunch>=0.7) moods.push('crunchy'); return moods; }
-    function getTimelineDurationSeconds(){ return state.timeline.reduce((s,c)=>s + c.loop.totalSteps*(60/c.params.tempo/4),0); }
-    function refreshUI(){ const p=state.params; ui.tempoValue.textContent=`${p.tempo} BPM`; ui.barsValue.textContent=String(p.bars); ui.swingValue.textContent=`${Math.round(p.swing*100)}%`; ui.densityValue.textContent=`${Math.round(p.density*100)}%`; ui.variationValue.textContent=`${Math.round(p.variation*100)}%`; ui.octaveValue.textContent=String(p.octave); ui.arpValue.textContent=`${Math.round(p.arpBias*100)}%`; ui.echoValue.textContent=`${Math.round(p.echo*100)}%`; ui.bitcrushValue.textContent=`${Math.round(p.crunch*100)}%`; const prettyScale = p.scale.split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' '); ui.songTitle.textContent=`${p.key} ${prettyScale} Loop`; ui.metaTempo.textContent=`${p.tempo} BPM`; ui.metaBars.textContent=`${p.bars} ${p.bars===1?'Bar':'Bars'}`; ui.metaScale.textContent=prettyScale; ui.metaSeed.textContent=`Seed ${p.seed}`; ui.metaMode.textContent=state.playMode==='loop'?'Loop Mode':'Timeline Mode'; const moods=describeMood(); ui.moodLabel.textContent=(moods[1]||'retro').replace(/^./,m=>m.toUpperCase()); ui.moodDetail.textContent=`${p.leadWave[0].toUpperCase()+p.leadWave.slice(1)} lead with ${Math.round(p.swing*100)}% swing and ${Math.round(p.variation*100)}% variation.`; ui.loopSummary.textContent=`Generated ${p.key} ${prettyScale} loop with ${p.leadOn?'lead':'no lead'}, ${p.bassOn?'bass':'no bass'}, ${p.drumsOn?'drums':'no drums'}, and ${p.harmonyOn?'harmony pads':'no harmony'}.`; ui.timelineCount.textContent=String(state.timeline.length); ui.timelineDuration.textContent=`${getTimelineDurationSeconds().toFixed(1)}s total`; renderStepGrids(state.loop); renderLibrary(); renderTimeline(); }
-    function randomizeSettings(){ const rng=mulberry32(Date.now()%1000000); Object.assign(state.params,{ key:pick(rng,NOTES), scale:pick(rng,Object.keys(SCALES)), tempo:Math.floor(85+rng()*90), bars:pick(rng,[2,4,4,8]), swing:+(rng()*0.28).toFixed(2), density:+(0.35+rng()*0.58).toFixed(2), variation:+(rng()*0.9).toFixed(2), octave:pick(rng,[3,4,4,5]), arpBias:+(rng()*0.95).toFixed(2), echo:+(rng()*0.35).toFixed(2), crunch:+(rng()*0.9).toFixed(2), seed:Math.floor(1+rng()*999999), leadWave:pick(rng,['square','triangle','sawtooth']), bassWave:pick(rng,['triangle','square','sawtooth']), leadOn:chance(rng,0.92), bassOn:chance(rng,0.95), drumsOn:true, harmonyOn:chance(rng,0.85) }); syncInputs(); generateLoop(); if(state.audio) updateFx(); }
+  function generateLoopFromParams(p) {
+    const rng = mulberry32(Number(p.seed) || 1);
+    const totalSteps = p.bars * 16;
+    const leadScale = getScaleMidis(p.key, p.scale, p.octave);
+    const bassScale = getScaleMidis(p.key, p.scale, Math.max(1, p.octave - 2));
+    const chordDegrees = [0, 3, 4, 5];
+    const progression = Array.from({ length: p.bars }, () => pick(rng, chordDegrees));
+    const lead = [];
+    const bass = [];
+    const drums = [];
+    const harmony = [];
+    let prevLead = leadScale[0];
 
-    function saveCurrentLoop(){ readInputs(); const name=ui.loopNameInput.value.trim() || `Loop ${state.savedLoops.length+1}`; const loop=generateLoopFromParams(state.params); state.loop=loop; state.savedLoops.unshift({ id:uid('loop'), name, params:clone(state.params), loop:clone(loop) }); refreshUI(); }
-    function loadLoop(id){ const item=state.savedLoops.find(x=>x.id===id); if(!item) return; state.params=clone(item.params); state.loop=clone(item.loop); ui.loopNameInput.value=item.name; stopPlayback(); syncInputs(); }
-    function duplicateToTimeline(id){ const item=state.savedLoops.find(x=>x.id===id); if(!item) return; state.timeline.push({ ...clone(item), id:uid('clip') }); refreshUI(); }
-    function removeTimelineItem(id){ state.timeline = state.timeline.filter(x=>x.id!==id); refreshUI(); }
-    function moveTimelineItem(fromId,toId){ const from=state.timeline.findIndex(x=>x.id===fromId), to=state.timeline.findIndex(x=>x.id===toId); if(from<0||to<0||from===to) return; const [moved]=state.timeline.splice(from,1); state.timeline.splice(to,0,moved); refreshUI(); }
+    const minorish = [
+      "natural_minor", "harmonic_minor", "melodic_minor", "dorian", "phrygian",
+      "locrian", "hungarian_minor", "persian", "romanian_minor", "ukrainian_dorian",
+      "blues", "phrygian_dominant", "altered", "iwato", "in_sen"
+    ];
 
-    function renderLibrary(){ ui.savedLoops.innerHTML=''; if(!state.savedLoops.length){ ui.savedLoops.innerHTML='<div class="small">No saved loops yet. Save the current loop to build a reusable clip library.</div>'; return; } state.savedLoops.forEach(loop=>{ const duration=(loop.loop.totalSteps*(60/loop.params.tempo/4)).toFixed(1); const card=document.createElement('div'); card.className='loop-chip'; card.draggable=true; card.dataset.loopId=loop.id; card.dataset.tooltip='Drag this saved loop onto the timeline. You can also load it back into the editor or add it with one click.'; card.innerHTML=`<div class="loop-top"><div><div class="loop-name">${loop.name}</div><div class="small">${loop.params.key} ${loop.params.scale} · ${loop.params.tempo} BPM</div></div><div class="pill">${loop.params.bars} bars</div></div><div class="loop-meta"><span class="pill">${duration}s</span><span class="pill">${loop.params.leadWave}</span><span class="pill">seed ${loop.params.seed}</span></div><div class="loop-actions"><button class="secondary">Load</button><button class="ghost">Add</button></div>`; const [loadBtn, addBtn]=card.querySelectorAll('button'); loadBtn.onclick=()=>loadLoop(loop.id); addBtn.onclick=()=>duplicateToTimeline(loop.id); card.addEventListener('dragstart',()=>{state.draggedLoopId=loop.id;}); card.addEventListener('dragend',()=>{state.draggedLoopId=null;}); ui.savedLoops.appendChild(card); }); }
-    function renderTimeline(){ ui.timelineItems.innerHTML=''; ui.timelineEmpty.classList.toggle('hidden', state.timeline.length>0); state.timeline.forEach((clip,index)=>{ const item=document.createElement('div'); item.className='timeline-item'+(state.isPlaying&&state.playMode==='timeline'&&index===state.activeTimelineClipIndex?' playing':''); item.draggable=true; item.dataset.timelineId=clip.id; item.dataset.tooltip='This clip is part of the timeline arrangement. Drag it to reorder, or remove it to shorten the song.'; item.innerHTML=`<div class="timeline-order">#${index+1}</div><div class="loop-name">${clip.name}</div><div class="loop-meta"><span class="pill">${clip.params.key} ${clip.params.scale}</span><span class="pill">${clip.params.tempo} BPM</span><span class="pill">${clip.params.bars} bars</span></div><div class="timeline-actions"><button class="secondary">Edit</button><button class="ghost">Copy</button><button class="stop">Remove</button></div>`; const [editBtn, copyBtn, removeBtn]=item.querySelectorAll('button'); editBtn.onclick=()=>{ state.params=clone(clip.params); state.loop=clone(clip.loop); ui.loopNameInput.value=clip.name; state.playMode='loop'; stopPlayback(); syncInputs(); }; copyBtn.onclick=()=>{ state.timeline.splice(index+1,0,{...clone(clip), id:uid('clip')}); refreshUI(); }; removeBtn.onclick=()=>removeTimelineItem(clip.id); item.addEventListener('dragstart',()=>{state.draggedTimelineId=clip.id;}); item.addEventListener('dragend',()=>{state.draggedTimelineId=null;}); item.addEventListener('dragover',e=>e.preventDefault()); item.addEventListener('drop',e=>{e.preventDefault(); if(state.draggedTimelineId) moveTimelineItem(state.draggedTimelineId, clip.id);}); ui.timelineItems.appendChild(item); }); }
-    ui.timelineDropzone.addEventListener('dragover',e=>{e.preventDefault(); ui.timelineDropzone.classList.add('dragover');});
-    ui.timelineDropzone.addEventListener('dragleave',()=>ui.timelineDropzone.classList.remove('dragover'));
-    ui.timelineDropzone.addEventListener('drop',e=>{e.preventDefault(); ui.timelineDropzone.classList.remove('dragover'); if(state.draggedLoopId) duplicateToTimeline(state.draggedLoopId);});
+    for (let step = 0; step < totalSteps; step++) {
+      const bar = Math.floor(step / 16);
+      const pos = step % 16;
+      const strongBeat = pos % 4 === 0;
+      const offbeat = pos % 2 === 1;
+      const degree = progression[bar % progression.length];
 
-    function getSequence(){ return state.playMode==='timeline' && state.timeline.length ? state.timeline : [{ id:'current', name:ui.loopNameInput.value.trim()||'Current Loop', params:clone(state.params), loop:clone(state.loop) }]; }
-    function getSequenceTotalSteps(){ return getSequence().reduce((s,c)=>s+c.loop.totalSteps,0); }
-    function findClipAndLocalStep(globalStep){ const seq=getSequence(); let cursor=0; for(let i=0;i<seq.length;i++){ if(globalStep<cursor+seq[i].loop.totalSteps) return { clip:seq[i], clipIndex:i, localStep:globalStep-cursor }; cursor+=seq[i].loop.totalSteps; } return { clip:seq[0], clipIndex:0, localStep:0 }; }
-    function scheduleTone(time, freq, duration, type, volume=0.25, glide=false){ const {ctx,dry}=state.audio; const osc=ctx.createOscillator(), gain=ctx.createGain(); osc.type=type; osc.frequency.setValueAtTime(freq,time); if(glide) osc.frequency.linearRampToValueAtTime(freq*0.997,time+duration); gain.gain.setValueAtTime(0.0001,time); gain.gain.exponentialRampToValueAtTime(Math.max(0.0001,volume),time+0.006); gain.gain.exponentialRampToValueAtTime(0.0001,time+duration); osc.connect(gain); gain.connect(dry); osc.start(time); osc.stop(time+duration+0.02); }
-    function scheduleNoiseHit(time,duration,volume,filterFreq){ const {ctx,dry}=state.audio; const buffer=ctx.createBuffer(1,Math.floor(ctx.sampleRate*duration),ctx.sampleRate); const ch=buffer.getChannelData(0); for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1; const source=ctx.createBufferSource(), filter=ctx.createBiquadFilter(), gain=ctx.createGain(); source.buffer=buffer; filter.type='bandpass'; filter.frequency.setValueAtTime(filterFreq,time); gain.gain.setValueAtTime(volume,time); gain.gain.exponentialRampToValueAtTime(0.0001,time+duration); source.connect(filter); filter.connect(gain); gain.connect(dry); source.start(time); source.stop(time+duration+0.01); }
-    function playLoopStep(loopObj,p,step,when){ const sixteenth=60/p.tempo/4; const lead=loopObj.lead[step], bass=loopObj.bass[step], drum=loopObj.drums[step], harm=loopObj.harmony[step]; if(p.leadOn&&lead) scheduleTone(when,midiToFreq(lead.midi),sixteenth*Math.max(0.75,lead.len*0.92),p.leadWave,0.12*lead.vel,true); if(p.bassOn&&bass) scheduleTone(when,midiToFreq(bass.midi),sixteenth*Math.max(0.9,bass.len*1.35),p.bassWave,0.14*bass.vel,false); if(p.harmonyOn&&harm) harm.forEach((midi,idx)=>scheduleTone(when,midiToFreq(midi),sixteenth*6.5,idx===0?'triangle':'square',idx===0?0.03:0.022,false)); if(p.drumsOn&&drum){ if(drum.kick){ const {ctx,dry}=state.audio; const osc=ctx.createOscillator(), gain=ctx.createGain(); osc.type='sine'; osc.frequency.setValueAtTime(130,when); osc.frequency.exponentialRampToValueAtTime(42,when+0.09); gain.gain.setValueAtTime(0.25,when); gain.gain.exponentialRampToValueAtTime(0.0001,when+0.12); osc.connect(gain); gain.connect(dry); osc.start(when); osc.stop(when+0.14); } if(drum.snare) scheduleNoiseHit(when,0.11,0.11,1800); if(drum.hat) scheduleNoiseHit(when,0.035,0.05,6000); } }
-    function scheduleAhead(){ if(!state.audio||!state.isPlaying) return; const {ctx}=state.audio; const totalSteps=getSequenceTotalSteps(); if(!totalSteps) return; while(state.nextStepTime<ctx.currentTime+0.13){ const {clip,clipIndex,localStep}=findClipAndLocalStep(state.stepIndex); const sixteenth=60/clip.params.tempo/4; const swingOffset=(localStep%2===1)?clip.params.swing*sixteenth:0; playLoopStep(clip.loop,clip.params,localStep,state.nextStepTime+swingOffset); state.nextStepTime+=sixteenth; state.activeTimelineClipIndex=clipIndex; state.stepIndex++; if(state.p
+      const chordPool = [degree, degree + 2, degree + 4].map(i => leadScale[i % leadScale.length]);
+      const melodicPool = [...new Set([
+        leadScale[degree % leadScale.length],
+        leadScale[(degree + 1) % leadScale.length],
+        leadScale[(degree + 2) % leadScale.length],
+        leadScale[(degree + 4) % leadScale.length],
+        leadScale[(degree + 6) % leadScale.length]
+      ])].sort((a, b) => a - b);
+
+      let leadNote = null;
+      const shouldPlay = chance(rng, Math.min(0.97, p.density + (strongBeat ? 0.16 : 0) - (offbeat ? 0.06 : 0)));
+
+      if (shouldPlay) {
+        let candidate = pick(rng, chance(rng, p.arpBias) ? chordPool : melodicPool);
+        if (chance(rng, p.variation * 0.65)) candidate += pick(rng, [-12, 0, 0, 12]);
+        while (Math.abs(candidate - prevLead) > 8) {
+          candidate += candidate > prevLead ? -12 : 12;
+        }
+        prevLead = candidate;
+        leadNote = {
+          midi: candidate,
+          len: strongBeat ? 1 : (chance(rng, 0.14) ? 2 : 1),
+          vel: strongBeat ? 0.9 : 0.74
+        };
+      }
+      lead.push(leadNote);
+
+      let bassNote = null;
+      if (strongBeat || chance(rng, 0.16 + p.variation * 0.24)) {
+        const bassDegree = chance(rng, 0.18 + p.variation * 0.3) ? degree + 4 : degree;
+        bassNote = {
+          midi: bassScale[bassDegree % bassScale.length] - 12,
+          len: strongBeat ? 2 : 1,
+          vel: strongBeat ? 0.86 : 0.68
+        };
+      }
+      bass.push(bassNote);
+
+      drums.push({
+        kick: strongBeat || (pos === 10 && chance(rng, 0.45 + p.variation * 0.3)),
+        snare: pos === 4 || pos === 12 || (chance(rng, p.variation * 0.16) && (pos === 7 || pos === 15)),
+        hat: chance(rng, 0.52 + p.density * 0.3) || pos % 4 === 2
+      });
+
+      let harmonyNotes = null;
+      if (pos === 0 || pos === 8 || (chance(rng, p.variation * 0.12) && pos === 12)) {
+        const rootNote = leadScale[degree % leadScale.length] - 12;
+        harmonyNotes = [
+          rootNote,
+          rootNote + (minorish.includes(p.scale) ? 3 : 4),
+          rootNote + 7
+        ];
+      }
+      harmony.push(harmonyNotes);
+    }
+
+    return { lead, bass, drums, harmony, progression, totalSteps };
+  }
+
+  function generateLoop() {
+    state.loop = generateLoopFromParams(state.params);
+    refreshUI();
+  }
+
+  function readInputs() {
+    Object.assign(state.params, {
+      key: ui.keySelect.value || "C",
+      scale: ui.scaleSelect.value || "natural_minor",
+      tempo: +ui.tempoRange.value,
+      bars: +ui.barsRange.value,
+      swing: +ui.swingRange.value,
+      density: +ui.densityRange.value,
+      variation: +ui.variationRange.value,
+      octave: +ui.octaveRange.value,
+      arpBias: +ui.arpRange.value,
+      echo: +ui.echoRange.value,
+      crunch: +ui.bitcrushRange.value,
+      seed: Math.max(1, +ui.seedInput.value || 1),
+      leadWave: ui.leadWaveSelect.value,
+      bassWave: ui.bassWaveSelect.value,
+      leadOn: ui.leadToggle.checked,
+      bassOn: ui.bassToggle.checked,
+      drumsOn: ui.drumsToggle.checked,
+      harmonyOn: ui.harmonyToggle.checked
+    });
+
+    state.playMode = ui.modeTimeline.checked ? "timeline" : "loop";
+  }
+
+  function syncInputs() {
+    const p = state.params;
+
+    populateKeySelect();
+    populateScaleSelect();
+
+    ui.keySelect.value = NOTES.includes(p.key) ? p.key : "C";
+    ui.scaleSelect.value = SCALES[p.scale] ? p.scale : "natural_minor";
+    ui.tempoRange.value = p.tempo;
+    ui.barsRange.value = p.bars;
+    ui.swingRange.value = p.swing;
+    ui.densityRange.value = p.density;
+    ui.variationRange.value = p.variation;
+    ui.octaveRange.value = p.octave;
+    ui.arpRange.value = p.arpBias;
+    ui.echoRange.value = p.echo;
+    ui.bitcrushRange.value = p.crunch;
+    ui.seedInput.value = p.seed;
+    ui.leadWaveSelect.value = p.leadWave;
+    ui.bassWaveSelect.value = p.bassWave;
+    ui.leadToggle.checked = p.leadOn;
+    ui.bassToggle.checked = p.bassOn;
+    ui.drumsToggle.checked = p.drumsOn;
+    ui.harmonyToggle.checked = p.harmonyOn;
+    ui.modeLoop.checked = state.playMode === "loop";
+    ui.modeTimeline.checked = state.playMode === "timeline";
+
+    refreshUI();
+  }
+
+  function describeMood() {
+    const p = state.params;
+    const moods = [];
+
+    if ([
+      "natural_minor", "harmonic_minor", "melodic_minor", "phrygian", "locrian",
+      "hungarian_minor", "persian", "romanian_minor", "double_harmonic",
+      "phrygian_dominant", "altered", "iwato", "in_sen", "enigmatic"
+    ].includes(p.scale)) moods.push("moody");
+
+    if ([
+      "major", "lydian", "mixolydian", "pentatonic_major", "yo", "bebop_major"
+    ].includes(p.scale)) moods.push("bright");
+
+    if (p.tempo >= 150) moods.push("hyper");
+    else if (p.tempo <= 95) moods.push("laid-back");
+    else moods.push("bouncy");
+
+    if (p.swing >= 0.2) moods.push("shuffled");
+    if (p.variation >= 0.68) moods.push("playful");
+    if (p.crunch >= 0.7) moods.push("crunchy");
+
+    return moods;
+  }
+
+  function getTimelineDurationSeconds() {
+    return state.timeline.reduce((sum, clip) => sum + clip.loop.totalSteps * (60 / clip.params.tempo / 4), 0);
+  }
+
+  function refreshUI() {
+    const p = state.params;
+    const prettyScale = safePrettyScale(p.scale);
+
+    ui.tempoValue.textContent = `${p.tempo} BPM`;
+    ui.barsValue.textContent = String(p.bars);
+    ui.swingValue.textContent = `${Math.round(p.swing * 100)}%`;
+    ui.densityValue.textContent = `${Math.round(p.density * 100)}%`;
+    ui.variationValue.textContent = `${Math.round(p.variation * 100)}%`;
+    ui.octaveValue.textContent = String(p.octave);
+    ui.arpValue.textContent = `${Math.round(p.arpBias * 100)}%`;
+    ui.echoValue.textContent = `${Math.round(p.echo * 100)}%`;
+    ui.bitcrushValue.textContent = `${Math.round(p.crunch * 100)}%`;
+
+    ui.songTitle.textContent = `${p.key} ${prettyScale} Loop`;
+    ui.metaTempo.textContent = `${p.tempo} BPM`;
+    ui.metaBars.textContent = `${p.bars} ${p.bars === 1 ? "Bar" : "Bars"}`;
+    ui.metaScale.textContent = prettyScale;
+    ui.metaSeed.textContent = `Seed ${p.seed}`;
+    ui.metaMode.textContent = state.playMode === "loop" ? "Loop Mode" : "Timeline Mode";
+
+    const moods = describeMood();
+    ui.moodLabel.textContent = (moods[1] || "retro").replace(/^./, (m) => m.toUpperCase());
+    ui.moodDetail.textContent = `${p.leadWave[0].toUpperCase() + p.leadWave.slice(1)} lead with ${Math.round(p.swing * 100)}% swing and ${Math.round(p.variation * 100)}% variation.`;
+    ui.loopSummary.textContent = `Generated ${p.key} ${prettyScale} loop with ${p.leadOn ? "lead" : "no lead"}, ${p.bassOn ? "bass" : "no bass"}, ${p.drumsOn ? "drums" : "no drums"}, and ${p.harmonyOn ? "harmony pads" : "no harmony"}.`;
+
+    ui.timelineCount.textContent = String(state.timeline.length);
+    ui.timelineDuration.textContent = `${getTimelineDurationSeconds().toFixed(1)}s total`;
+
+    renderStepGrids(state.loop);
+    renderLibrary();
+    renderTimeline();
+  }
+
+  function randomizeSettings() {
+    const rng = mulberry32(Date.now() % 1000000);
+    Object.assign(state.params, {
+      key: pick(rng, NOTES),
+      scale: pick(rng, Object.keys(SCALES)),
+      tempo: Math.floor(85 + rng() * 90),
+      bars: pick(rng, [2, 4, 4, 8]),
+      swing: +(rng() * 0.28).toFixed(2),
+      density: +(0.35 + rng() * 0.58).toFixed(2),
+      variation: +(rng() * 0.9).toFixed(2),
+      octave: pick(rng, [3, 4, 4, 5]),
+      arpBias: +(rng() * 0.95).toFixed(2),
+      echo: +(rng() * 0.35).toFixed(2),
+      crunch: +(rng() * 0.9).toFixed(2),
+      seed: Math.floor(1 + rng() * 999999),
+      leadWave: pick(rng, ["square", "triangle", "sawtooth"]),
+      bassWave: pick(rng, ["triangle", "square", "sawtooth"]),
+      leadOn: chance(rng, 0.92),
+      bassOn: chance(rng, 0.95),
+      drumsOn: true,
+      harmonyOn: chance(rng, 0.85)
+    });
+
+    syncInputs();
+    generateLoop();
+    if (state.audio) updateFx();
+  }
+
+  function saveCurrentLoop() {
+    readInputs();
+    const name = ui.loopNameInput.value.trim() || `Loop ${state.savedLoops.length + 1}`;
+    const loop = generateLoopFromParams(state.params);
+    state.loop = loop;
+    state.savedLoops.unshift({
+      id: uid("loop"),
+      name,
+      params: clone(state.params),
+      loop: clone(loop)
+    });
+    refreshUI();
+  }
+
+  function loadLoop(id) {
+    const item = state.savedLoops.find(x => x.id === id);
+    if (!item) return;
+    state.params = clone(item.params);
+    state.loop = clone(item.loop);
+    ui.loopNameInput.value = item.name;
+    stopPlayback();
+    syncInputs();
+  }
+
+  function duplicateToTimeline(id) {
+    const item = state.savedLoops.find(x => x.id === id);
+    if (!item) return;
+    state.timeline.push({ ...clone(item), id: uid("clip") });
+    refreshUI();
+  }
+
+  function removeTimelineItem(id) {
+    state.timeline = state.timeline.filter(x => x.id !== id);
+    refreshUI();
+  }
+
+  function moveTimelineItem(fromId, toId) {
+    const from = state.timeline.findIndex(x => x.id === fromId);
+    const to = state.timeline.findIndex(x => x.id === toId);
+    if (from < 0 || to < 0 || from === to) return;
+    const [moved] = state.timeline.splice(from, 1);
+    state.timeline.splice(to, 0, moved);
+    refreshUI();
+  }
+
+  function renderLibrary() {
+    ui.savedLoops.innerHTML = "";
+
+    if (!state.savedLoops.length) {
+      ui.savedLoops.innerHTML = '<div class="small">No saved loops yet. Save the current loop to build a reusable clip library.</div>';
+      return;
+    }
+
+    state.savedLoops.forEach((loop) => {
+      const duration = (loop.loop.totalSteps * (60 / loop.params.tempo / 4)).toFixed(1);
+      const card = document.createElement("div");
+      card.className = "loop-chip";
+      card.draggable = true;
+      card.dataset.loopId = loop.id;
+      card.dataset.tooltip = "Drag this saved loop onto the timeline. You can also load it back into the editor or add it with one click.";
+
+      card.innerHTML = `
+        <div class="loop-top">
+          <div>
+            <div class="loop-name">${loop.name}</div>
+            <div class="small">${loop.params.key} ${safePrettyScale(loop.params.scale)} · ${loop.params.tempo} BPM</div>
+          </div>
+          <div class="pill">${loop.params.bars} bars</div>
+        </div>
+        <div class="loop-meta">
+          <span class="pill">${duration}s</span>
+          <span class="pill">${loop.params.leadWave}</span>
+          <span class="pill">seed ${loop.params.seed}</span>
+        </div>
+        <div class="loop-actions">
+          <button class="secondary">Load</button>
+          <button class="ghost">Add</button>
+        </div>
+      `;
+
+      const [loadBtn, addBtn] = card.querySelectorAll("button");
+      loadBtn.onclick = () => loadLoop(loop.id);
+      addBtn.onclick = () => duplicateToTimeline(loop.id);
+
+      card.addEventListener("dragstart", () => {
+        state.draggedLoopId = loop.id;
+      });
+
+      card.addEventListener("dragend", () => {
+        state.draggedLoopId = null;
+      });
+
+      ui.savedLoops.appendChild(card);
+    });
+  }
+
+  function renderTimeline() {
+    ui.timelineItems.innerHTML = "";
+    ui.timelineEmpty.classList.toggle("hidden", state.timeline.length > 0);
+
+    state.timeline.forEach((clip, index) => {
+      const item = document.createElement("div");
+      item.className = "timeline-item" + (state.isPlaying && state.playMode === "timeline" && index === state.activeTimelineClipIndex ? " playing" : "");
+      item.draggable = true;
+      item.dataset.timelineId = clip.id;
+      item.dataset.tooltip = "This clip is part of the timeline arrangement. Drag it to reorder, or remove it to shorten the song.";
+
+      item.innerHTML = `
+        <div class="timeline-order">#${index + 1}</div>
+        <div class="loop-name">${clip.name}</div>
+        <div class="loop-meta">
+          <span class="pill">${clip.params.key} ${safePrettyScale(clip.params.scale)}</span>
+          <span class="pill">${clip.params.tempo} BPM</span>
+          <span class="pill">${clip.params.bars} bars</span>
+        </div>
+        <div class="timeline-actions">
+          <button class="secondary">Edit</button>
+          <button class="ghost">Copy</button>
+          <button class="stop">Remove</button>
+        </div>
+      `;
+
+      const [editBtn, copyBtn, removeBtn] = item.querySelectorAll("button");
+
+      editBtn.onclick = () => {
+        state.params = clone(clip.params);
+        state.loop = clone(clip.loop);
+        ui.loopNameInput.value = clip.name;
+        state.playMode = "loop";
+        stopPlayback();
+        syncInputs();
+      };
+
+      copyBtn.onclick = () => {
+        state.timeline.splice(index + 1, 0, { ...clone(clip), id: uid("clip") });
+        refreshUI();
+      };
+
+      removeBtn.onclick = () => removeTimelineItem(clip.id);
+
+      item.addEventListener("dragstart", () => {
+        state.draggedTimelineId = clip.id;
+      });
+
+      item.addEventListener("dragend", () => {
+        state.draggedTimelineId = null;
+      });
+
+      item.addEventListener("dragover", (e) => e.preventDefault());
+
+      item.addEventListener("drop", (e) => {
+        e.preventDefault();
+        if (state.draggedTimelineId) moveTimelineItem(state.draggedTimelineId, clip.id);
+      });
+
+      ui.timelineItems.appendChild(item);
+    });
+  }
+
+  ui.timelineDropzone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    ui.timelineDropzone.classList.add("dragover");
+  });
+
+  ui.timelineDropzone.addEventListener("dragleave", () => {
+    ui.timelineDropzone.classList.remove("dragover");
+  });
+
+  ui.timelineDropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    ui.timelineDropzone.classList.remove("dragover");
+    if (state.draggedLoopId) duplicateToTimeline(state.draggedLoopId);
+  });
+
+  function getSequence() {
+    return state.playMode === "timeline" && state.timeline.length
+      ? state.timeline
+      : [{
+          id: "current",
+          name: ui.loopNameInput.value.trim() || "Current Loop",
+          params: clone(state.params),
+          loop: clone(state.loop)
+        }];
+  }
+
+  function getSequenceTotalSteps() {
+    return getSequence().reduce((sum, clip) => sum + clip.loop.totalSteps, 0);
+  }
+
+  function findClipAndLocalStep(globalStep) {
+    const seq = getSequence();
+    let cursor = 0;
+    for (let i = 0; i < seq.length; i++) {
+      if (globalStep < cursor + seq[i].loop.totalSteps) {
+        return { clip: seq[i], clipIndex: i, localStep: globalStep - cursor };
+      }
+      cursor += seq[i].loop.totalSteps;
+    }
+    return { clip: seq[0], clipIndex: 0, localStep: 0 };
+  }
+
+  function scheduleTone(time, freq, duration, type, volume = 0.25, glide = false) {
+    const { ctx, dry } = state.audio;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, time);
+    if (glide) osc.frequency.linearRampToValueAtTime(freq * 0.997, time + duration);
+
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), time + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+    osc.connect(gain);
+    gain.connect(dry);
+    osc.start(time);
+    osc.stop(time + duration + 0.02);
+  }
+
+  function scheduleNoiseHit(time, duration, volume, filterFreq) {
+    const { ctx, dry } = state.audio;
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+    const ch = buffer.getChannelData(0);
+
+    for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    source.buffer = buffer;
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(filterFreq, time);
+
+    gain.gain.setValueAtTime(volume, time);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(dry);
+
+    source.start(time);
+    source.stop(time + duration + 0.01);
+  }
+
+  function playLoopStep(loopObj, p, step, when) {
+    const sixteenth = 60 / p.tempo / 4;
+    const lead = loopObj.lead[step];
+    const bass = loopObj.bass[step];
+    const drum = loopObj.drums[step];
+    const harm = loopObj.harmony[step];
+
+    if (p.leadOn && lead) {
+      scheduleTone(when, midiToFreq(lead.midi), sixteenth * Math.max(0.75, lead.len * 0.92), p.leadWave, 0.12 * lead.vel, true);
+    }
+
+    if (p.bassOn && bass) {
+      scheduleTone(when, midiToFreq(bass.midi), sixteenth * Math.max(0.9, bass.len * 1.35), p.bassWave, 0.14 * bass.vel, false);
+    }
+
+    if (p.harmonyOn && harm) {
+      harm.forEach((midi, idx) => {
+        scheduleTone(when, midiToFreq(midi), sixteenth * 6.5, idx === 0 ? "triangle" : "square", idx === 0 ? 0.03 : 0.022, false);
+      });
+    }
+
+    if (p.drumsOn && drum) {
+      if (drum.kick) {
+        const { ctx, dry } = state.audio;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(130, when);
+        osc.frequency.exponentialRampToValueAtTime(42, when + 0.09);
+        gain.gain.setValueAtTime(0.25, when);
+        gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.12);
+        osc.connect(gain);
+        gain.connect(dry);
+        osc.start(when);
+        osc.stop(when + 0.14);
+      }
+
+      if (drum.snare) scheduleNoiseHit(when, 0.11, 0.11, 1800);
+      if (drum.hat) scheduleNoiseHit(when, 0.035, 0.05, 6000);
+    }
+  }
+
+  function scheduleAhead() {
+    if (!state.audio || !state.isPlaying) return;
+    const { ctx } = state.audio;
+    const totalSteps = getSequenceTotalSteps();
+    if (!totalSteps) return;
+
+    while (state.nextStepTime < ctx.currentTime + 0.13) {
+      const { clip, clipIndex, localStep } = findClipAndLocalStep(state.stepIndex);
+      const sixteenth = 60 / clip.params.tempo / 4;
+      const swingOffset = (localStep % 2 === 1) ? clip.params.swing * sixteenth : 0;
+
+      playLoopStep(clip.loop, clip.params, localStep, state.nextStepTime + swingOffset);
+
+      state.nextStepTime += sixteenth;
+      state.activeTimelineClipIndex = clipIndex;
+      state.stepIndex++;
+
+      if (state.playMode === "timeline") {
+        if (state.stepIndex >= totalSteps) state.stepIndex = 0;
+      } else {
+        if (state.stepIndex >= clip.loop.totalSteps) state.stepIndex = 0;
+      }
+    }
+  }
+
+  function transportTick() {
+    const totalSteps = getSequenceTotalSteps();
+    if (!totalSteps) return;
+
+    const { clip, clipIndex, localStep } = findClipAndLocalStep(Math.min(state.stepIndex, totalSteps - 1));
+    state.activeTimelineClipIndex = clipIndex;
+    state.currentBar = Math.floor(localStep / 16);
+    state.currentStepInBar = localStep % 16;
+
+    ui.currentBar.textContent = `${state.currentBar + 1} / ${clip.params.bars}`;
+    ui.currentStep.textContent = `${state.currentStepInBar + 1} / 16`;
+
+    renderStepGrids(clip.loop);
+    renderTimeline();
+  }
+
+  function startTransportLoop() {
+    if (state.intervalId) clearInterval(state.intervalId);
+    state.intervalId = setInterval(() => {
+      scheduleAhead();
+      transportTick();
+    }, 25);
+  }
+
+  async function startPlayback() {
+    initAudio();
+    readInputs();
+
+    if (state.playMode === "timeline" && !state.timeline.length) {
+      alert("Add at least one saved loop to the timeline before using Timeline Mode.");
+      return;
+    }
+
+    if (state.audio.ctx.state === "suspended") {
+      await state.audio.ctx.resume();
+    }
+
+    if (!state.loop) generateLoop();
+    if (state.isPlaying) return;
+
+    state.isPlaying = true;
+    state.stepIndex = 0;
+    state.currentBar = 0;
+    state.currentStepInBar = 0;
+    state.activeTimelineClipIndex = 0;
+    state.nextStepTime = state.audio.ctx.currentTime + 0.05;
+
+    startTransportLoop();
+    ui.playState.textContent = state.playMode === "loop" ? "Playing Loop" : "Playing Timeline";
+  }
+
+  function stopPlayback() {
+    state.isPlaying = false;
+    if (state.intervalId) clearInterval(state.intervalId);
+    state.intervalId = null;
+    state.stepIndex = 0;
+    state.currentBar = 0;
+    state.currentStepInBar = 0;
+    state.activeTimelineClipIndex = 0;
+    ui.playState.textContent = "Stopped";
+    ui.currentBar.textContent = `1 / ${state.params.bars}`;
+    ui.currentStep.textContent = "1 / 16";
+    renderStepGrids(state.loop);
+    renderTimeline();
+  }
+
+  function renderStepGrid(container, data, type) {
+    container.innerHTML = "";
+    const barStart = state.currentBar * 16;
+
+    data.slice(barStart, barStart + 16).forEach((item, idx) => {
+      const el = document.createElement("div");
+      const isActive = type === "drums"
+        ? !!(item && (item.kick || item.snare || item.hat))
+        : !!item;
+
+      el.className = "step" + (isActive ? " active" : "") + (state.isPlaying && idx === state.currentStepInBar ? " playing" : "");
+      el.title = type === "drums"
+        ? (item ? `${item.kick ? "Kick " : ""}${item.snare ? "Snare " : ""}${item.hat ? "Hat" : ""}`.trim() || "Rest" : "Rest")
+        : (item ? noteNameFromMidi(item.midi) : "Rest");
+
+      container.appendChild(el);
+    });
+  }
+
+  function renderStepGrids(loopObj) {
+    if (!loopObj) return;
+    renderStepGrid(ui.leadSteps, loopObj.lead, "lead");
+    renderStepGrid(ui.bassSteps, loopObj.bass, "bass");
+    renderStepGrid(ui.drumSteps, loopObj.drums, "drums");
+  }
+
+  function startVisualizer() {
+    const canvas = ui.viz;
+    const ctx2d = canvas.getContext("2d");
+
+    function draw() {
+      if (!state.audio || !state.analyserData) {
+        state.vizFrame = requestAnimationFrame(draw);
+        return;
+      }
+
+      state.audio.analyser.getByteFrequencyData(state.analyserData);
+
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx2d.clearRect(0, 0, w, h);
+
+      ctx2d.fillStyle = "rgba(255,255,255,0.04)";
+      for (let i = 0; i < 16; i++) {
+        ctx2d.fillRect(i * (w / 16), 0, 1, h);
+      }
+
+      const bw = w / state.analyserData.length;
+      for (let i = 0; i < state.analyserData.length; i++) {
+        const val = state.analyserData[i] / 255;
+        const x = i * bw;
+        const bh = Math.max(2, val * h * 0.95);
+        ctx2d.fillStyle = i % 4 === 0 ? "rgba(124,247,197,0.82)" : "rgba(141,183,255,0.7)";
+        ctx2d.fillRect(x, h - bh, Math.max(1, bw - 1), bh);
+      }
+
+      ctx2d.fillStyle = "rgba(141,183,255,0.24)";
+      ctx2d.fillRect((state.currentStepInBar / 16) * w, 0, w / 16, h);
+
+      state.vizFrame = requestAnimationFrame(draw);
+    }
+
+    if (state.vizFrame) cancelAnimationFrame(state.vizFrame);
+    draw();
+  }
+
+  function floatTo16BitPCM(view, offset, input) {
+    for (let i = 0; i < input.length; i++, offset += 2) {
+      const s = Math.max(-1, Math.min(1, input[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+  }
+
+  function writeString(view, offset, string) {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  }
+
+  function encodeWav(samples, sampleRate) {
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+
+    writeString(view, 0, "RIFF");
+    view.setUint32(4, 36 + samples.length * 2, true);
+    writeString(view, 8, "WAVE");
+    writeString(view, 12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(view, 36, "data");
+    view.setUint32(40, samples.length * 2, true);
+    floatTo16BitPCM(view, 44, samples);
+
+    return new Blob([view], { type: "audio/wav" });
+  }
+
+  function renderSequenceOffline(sequence) {
+    const sampleRate = 44100;
+    const totalSeconds = Math.max(
+      0.1,
+      sequence.reduce((sum, clip) => sum + clip.loop.totalSteps * (60 / clip.params.tempo / 4), 0) + 0.6
+    );
+    const totalSamples = Math.ceil(totalSeconds * sampleRate);
+    const mix = new Float32Array(totalSamples);
+    let cursorTime = 0;
+
+    function addPulse(start, freq, duration, volume, wave) {
+      const s0 = Math.floor(start * sampleRate);
+      const s1 = Math.min(totalSamples, Math.floor((start + duration) * sampleRate));
+
+      for (let i = s0; i < s1; i++) {
+        const t = (i - s0) / sampleRate;
+        const env = Math.exp(-5 * t / Math.max(duration, 0.001));
+        const phase = 2 * Math.PI * freq * t;
+        let sample = 0;
+
+        if (wave === "square") sample = Math.sin(phase) >= 0 ? 1 : -1;
+        else if (wave === "triangle") sample = 2 * Math.asin(Math.sin(phase)) / Math.PI;
+        else sample = 2 * ((freq * t) % 1) - 1;
+
+        mix[i] += sample * volume * env;
+      }
+    }
+
+    function addNoise(start, duration, volume, bright = 1) {
+      const s0 = Math.floor(start * sampleRate);
+      const s1 = Math.min(totalSamples, Math.floor((start + duration) * sampleRate));
+      let last = 0;
+
+      for (let i = s0; i < s1; i++) {
+        const t = (i - s0) / sampleRate;
+        const env = Math.exp(-12 * t / Math.max(duration, 0.001));
+        const white = (Math.random() * 2 - 1) * bright;
+        last = last * 0.2 + white * 0.8;
+        mix[i] += last * volume * env;
+      }
+    }
+
+    sequence.forEach((clip) => {
+      const p = clip.params;
+      const loop = clip.loop;
+      const sixteenth = 60 / p.tempo / 4;
+
+      for (let step = 0; step < loop.totalSteps; step++) {
+        const when = cursorTime + step * sixteenth + ((step % 2 === 1) ? p.swing * sixteenth : 0);
+        const lead = loop.lead[step];
+        const bass = loop.bass[step];
+        const drum = loop.drums[step];
+        const harm = loop.harmony[step];
+
+        if (p.leadOn && lead) addPulse(when, midiToFreq(lead.midi), sixteenth * Math.max(0.75, lead.len * 0.92), 0.12 * lead.vel, p.leadWave);
+        if (p.bassOn && bass) addPulse(when, midiToFreq(bass.midi), sixteenth * Math.max(0.9, bass.len * 1.35), 0.14 * bass.vel, p.bassWave);
+        if (p.harmonyOn && harm) {
+          harm.forEach((midi, idx) => addPulse(when, midiToFreq(midi), sixteenth * 6.5, idx === 0 ? 0.03 : 0.022, idx === 0 ? "triangle" : "square"));
+        }
+
+        if (p.drumsOn && drum) {
+          if (drum.kick) addPulse(when, 62, 0.12, 0.22, "triangle");
+          if (drum.snare) addNoise(when, 0.11, 0.1, 0.7);
+          if (drum.hat) addNoise(when, 0.035, 0.045, 1.2);
+        }
+      }
+
+      cursorTime += loop.totalSteps * sixteenth;
+    });
+
+    for (let i = 0; i < mix.length; i++) {
+      mix[i] = Math.tanh(mix[i] * 0.9);
+    }
+
+    return encodeWav(mix, sampleRate);
+  }
+
+  function downloadBlob(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function exportCurrentLoop() {
+    readInputs();
+    const loop = state.loop || generateLoopFromParams(state.params);
+    const name = (ui.loopNameInput.value.trim() || "loop").replace(/\s+/g, "_").toLowerCase();
+    downloadBlob(
+      renderSequenceOffline([{
+        id: "export",
+        name: ui.loopNameInput.value.trim() || "loop",
+        params: clone(state.params),
+        loop: clone(loop)
+      }]),
+      `${name}.wav`
+    );
+  }
+
+  function exportTimeline() {
+    if (!state.timeline.length) {
+      alert("Add at least one clip to the timeline before exporting it.");
+      return;
+    }
+    downloadBlob(renderSequenceOffline(state.timeline), "timeline_arrangement.wav");
+  }
+
+  function bindTooltips() {
+    const tooltip = ui.tooltip;
+
+    document.addEventListener("mousemove", (e) => {
+      if (tooltip.classList.contains("visible")) {
+        tooltip.style.left = `${e.clientX + 14}px`;
+        tooltip.style.top = `${e.clientY + 14}px`;
+      }
+    });
+
+    document.addEventListener("mouseover", (e) => {
+      const target = e.target.closest("[data-tooltip]");
+      if (!target) return;
+      tooltip.textContent = target.dataset.tooltip;
+      tooltip.classList.add("visible");
+      tooltip.style.left = `${e.clientX + 14}px`;
+      tooltip.style.top = `${e.clientY + 14}px`;
+    });
+
+    document.addEventListener("mouseout", (e) => {
+      if (e.target.closest("[data-tooltip]")) {
+        tooltip.classList.remove("visible");
+      }
+    });
+  }
+
+  function bindEvents() {
+    const regen = [
+      ui.keySelect,
+      ui.scaleSelect,
+      ui.barsRange,
+      ui.swingRange,
+      ui.densityRange,
+      ui.variationRange,
+      ui.octaveRange,
+      ui.arpRange,
+      ui.seedInput,
+      ui.leadWaveSelect,
+      ui.bassWaveSelect,
+      ui.leadToggle,
+      ui.bassToggle,
+      ui.drumsToggle,
+      ui.harmonyToggle,
+      ui.modeLoop,
+      ui.modeTimeline
+    ];
+
+    regen.forEach((el) => {
+      el.addEventListener("input", () => {
+        readInputs();
+        generateLoop();
+      });
+
+      el.addEventListener("change", () => {
+        readInputs();
+        generateLoop();
+      });
+    });
+
+    [ui.echoRange, ui.bitcrushRange, ui.tempoRange].forEach((el) => {
+      el.addEventListener("input", () => {
+        readInputs();
+        if (state.audio) updateFx();
+        refreshUI();
+      });
+    });
+
+    ui.playBtn.onclick = startPlayback;
+    ui.stopBtn.onclick = stopPlayback;
+    ui.randomBtn.onclick = randomizeSettings;
+
+    ui.rerollBtn.onclick = () => {
+      readInputs();
+      state.params.seed = Math.floor(Math.random() * 999999) + 1;
+      ui.seedInput.value = state.params.seed;
+      generateLoop();
+    };
+
+    ui.saveLoopBtn.onclick = saveCurrentLoop;
+    ui.exportLoopBtn.onclick = exportCurrentLoop;
+    ui.exportTimelineBtn.onclick = exportTimeline;
+
+    ui.clearTimelineBtn.onclick = () => {
+      state.timeline = [];
+      refreshUI();
+    };
+  }
+
+  populateKeySelect();
+  populateScaleSelect();
+  bindEvents();
+  bindTooltips();
+  syncInputs();
+  generateLoop();
+</script>
