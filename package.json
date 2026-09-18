@@ -1,13 +1,14 @@
 {
   "name": "8bit-song-generator",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Dependency-free chiptune loop generator and arranger",
   "scripts": {
     "test": "node --test",
     "check": "node --check core.js && node --check audio.js && node --check session.js && node --check app.js",
     "test:browser": "python3 tests/browser_smoke.py",
-    "test:browser:iteration": "python3 tests/browser_iteration.py"
+    "test:browser:iteration": "python3 tests/browser_iteration.py",
+    "test:browser:visual": "python3 tests/browser_visual.py"
   },
   "engines": {
     "node": ">=18"

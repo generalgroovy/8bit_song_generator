@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0f1220">
+  <meta name="theme-color" content="#23312d">
   <meta name="description" content="Create seeded chiptune loops, arrange clips and export WAV audio. No account, uploads or dependencies.">
   <title>8-Bit Loop Generator</title>
   <link rel="icon" href="data:,">
@@ -16,7 +16,7 @@
 <body>
   <a class="skip-link" href="#workspace">Skip to workspace</a>
   <header class="transport">
-    <div class="brand"><span class="brand-mark" aria-hidden="true">▥</span><h1>8-Bit <span>Loop Generator</span></h1></div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="32" height="32"><path d="M3 23V9h9v14h8V9h9" fill="none" stroke="currentColor" stroke-width="3"/><path d="M3 29h26" stroke="currentColor" stroke-width="2"/></svg></span><h1>8-BIT <span>LOOP STUDIO</span></h1></div>
     <div class="transport-buttons" role="group" aria-label="Playback">
       <button id="playBtn" class="primary" title="Play selected mode (Space)">▶ Play</button>
       <button id="stopBtn" class="stop" title="Stop and silence all voices (Space)" disabled>■ Stop</button>
@@ -27,17 +27,18 @@
     </fieldset>
     <div class="transport-status"><span id="playState">Stopped</span><span id="transportPosition">Bar 1 · Step 1</span></div>
     <label class="volume" for="volumeRange">Volume <input id="volumeRange" type="range" min="0" max="100" value="72"><output id="volumeValue" for="volumeRange">72%</output></label>
+    <button id="helpBtn" class="help-button" aria-haspopup="dialog">Guide <span aria-hidden="true">?</span></button>
   </header>
   <div class="app">
     <aside class="panel controls" aria-label="Loop settings">
-      <div class="panel-head"><h2>Loop settings</h2><span class="micro">Seeded · repeatable</span></div>
+      <div class="panel-head"><h2><span class="section-number" aria-hidden="true">01</span> Shape your loop</h2><span class="micro">GENERATOR</span></div>
       <div class="generate-actions">
         <button id="rerollBtn" class="primary" title="New seed; keep every other setting (G)">↻ New pattern</button>
         <button id="randomBtn" title="Randomize musical settings and seed">Randomize</button>
       </div>
       <label class="field preset-field" for="presetSelect"><span>Preset</span><select id="presetSelect"><option value="">Custom / current settings</option></select></label>
       <section class="setting-section" aria-labelledby="songHeading">
-        <h3 id="songHeading">Song</h3>
+        <h3 id="songHeading">Key &amp; rhythm</h3>
         <div class="tonality field-grid">
           <label class="field" for="keySelect"><span>Key</span><select id="keySelect"></select></label>
           <label class="field" for="scaleSelect"><span>Scale</span><select id="scaleSelect"></select></label>
@@ -55,7 +56,7 @@
           <label class="field" for="densityRange"><span>Density <output id="densityValue" for="densityRange"></output></span><input id="densityRange" type="range" min="0.2" max="1" step="0.01" value="0.68"></label>
           <label class="field" for="variationRange"><span>Variation <output id="variationValue" for="variationRange"></output></span><input id="variationRange" type="range" min="0" max="1" step="0.01" value="0.46"></label>
           <label class="field" for="octaveRange"><span>Lead octave <output id="octaveValue" for="octaveRange"></output></span><input id="octaveRange" type="range" min="3" max="6" step="1" value="4"></label>
-          <label class="field" for="arpRange"><span>Arpeggio <output id="arpValue" for="arpRange"></output></span><input id="arpRange" type="range" min="0" max="1" step="0.01" value="0.42" title="Bias toward chord tones"></label>
+          <label class="field" for="arpRange"><span>Arpeggio <output id="arpValue" for="arpRange"></output></span><input id="arpRange" type="range" min="0" max="1" step="0.01" value="0.42" title="Favor notes from the current chord"></label>
         </div>
       </details>
       <details class="setting-section" open>
@@ -64,7 +65,7 @@
           <label class="field" for="leadWaveSelect"><span>Lead wave</span><select id="leadWaveSelect"><option value="square">Square</option><option value="triangle">Triangle</option><option value="sawtooth">Sawtooth</option></select></label>
           <label class="field" for="bassWaveSelect"><span>Bass wave</span><select id="bassWaveSelect"><option value="triangle">Triangle</option><option value="square">Square</option><option value="sawtooth">Sawtooth</option></select></label>
           <label class="field" for="echoRange"><span>Echo <output id="echoValue" for="echoRange"></output></span><input id="echoRange" type="range" min="0" max="0.45" step="0.01" value="0.14"></label>
-          <label class="field" for="bitcrushRange"><span>Crunch <output id="bitcrushValue" for="bitcrushRange"></output></span><input id="bitcrushRange" type="range" min="0" max="0.95" step="0.01" value="0.35" title="Native waveshaping and low-pass filtering; no main-thread audio callbacks"></label>
+          <label class="field" for="bitcrushRange"><span>Crunch <output id="bitcrushValue" for="bitcrushRange"></output></span><input id="bitcrushRange" type="range" min="0" max="0.95" step="0.01" value="0.35" title="Add digital grit and soften the high frequencies"></label>
         </div>
       </details>
       <label class="field harmony-field" for="harmonyModeSelect"><span>Harmony</span><select id="harmonyModeSelect" title="Legacy keeps original seed output. Scale-locked uses only notes from the selected scale."><option value="legacy">Legacy chords</option><option value="scale">Scale-locked chords</option></select></label>
@@ -77,26 +78,29 @@
           <div class="meta"><span id="metaTempo">120 BPM</span><span id="metaBars">4 bars</span><span id="metaSeed">Seed 4312</span><span id="loopDuration">8.0s</span></div>
           <p id="loopSummary" class="micro">Lead · Bass · Drums · Harmony</p>
         </div>
-        <figure class="visualizer"><figcaption>Output spectrum <span id="audioStatus">Ready</span></figcaption><canvas id="viz" width="640" height="112" role="img" aria-label="Live audio spectrum; playback position is also shown in the transport"></canvas></figure>
+        <figure class="visualizer"><figcaption><span id="scopeLabel">Pattern contour · all bars</span><span id="audioStatus">Ready</span></figcaption><canvas id="viz" width="640" height="112" role="img" aria-label="Pattern pitch contour; note details are available in the pattern below"></canvas></figure>
       </section>
       <section class="panel sequencer" aria-labelledby="stepsHeading">
-        <div class="panel-head"><h2 id="stepsHeading">Pattern <span class="micro">16 steps / bar</span></h2><div class="bar-navigation" role="group" aria-label="Inspect pattern bars"><button id="prevBarBtn" class="small-button" aria-label="Previous bar">←</button><label class="sr-only" for="barSelect">Preview bar</label><select id="barSelect" title="Inspect any bar while stopped"></select><button id="nextBarBtn" class="small-button" aria-label="Next bar">→</button></div><span class="position"><span id="currentBar">1 / 4</span> bars · <span id="currentStep">1 / 16</span> steps</span></div>
-        <div class="step-ruler" aria-hidden="true"><span>Tracks</span><div id="stepNumbers" class="steps"></div></div>
-        <div class="track-row" data-track="lead"><label class="track-name"><input id="leadToggle" type="checkbox" checked>Lead</label><div id="leadSteps" class="steps" role="group" aria-label="Lead notes"></div></div>
-        <div class="track-row" data-track="bass"><label class="track-name"><input id="bassToggle" type="checkbox" checked>Bass</label><div id="bassSteps" class="steps" role="group" aria-label="Bass notes"></div></div>
-        <div class="track-row" data-track="drums"><label class="track-name"><input id="drumsToggle" type="checkbox" checked>Drums</label><div id="drumSteps" class="steps" role="group" aria-label="Drum hits"></div></div>
-        <div class="track-row" data-track="harmony"><label class="track-name"><input id="harmonyToggle" type="checkbox" checked>Harmony</label><div id="harmonySteps" class="steps" role="group" aria-label="Harmony notes"></div></div>
+        <div class="panel-head"><h2 id="stepsHeading"><span class="section-number" aria-hidden="true">02</span> Read the pattern</h2><div class="bar-navigation" role="group" aria-label="Inspect pattern bars"><button id="prevBarBtn" class="small-button" aria-label="Previous bar">←</button><label class="sr-only" for="barSelect">Preview bar</label><select id="barSelect" title="Inspect any bar while stopped"></select><button id="nextBarBtn" class="small-button" aria-label="Next bar">→</button></div><span class="position"><span id="currentBar">1 / 4</span> bars · <span id="currentStep">1 / 16</span> steps</span></div>
+        <div class="pattern-scroll" tabindex="-1"><div class="pattern-grid">
+        <div class="step-ruler" aria-hidden="true"><span>VOICE / STEP</span><div id="stepNumbers" class="steps"></div></div>
+        <div class="track-row" data-track="lead"><label class="track-name"><input id="leadToggle" type="checkbox" checked><span>Lead<small>MELODY</small></span></label><div id="leadSteps" class="steps" role="group" aria-label="Lead notes. Use arrow keys to inspect steps."></div></div>
+        <div class="track-row" data-track="bass"><label class="track-name"><input id="bassToggle" type="checkbox" checked><span>Bass<small>LOW END</small></span></label><div id="bassSteps" class="steps" role="group" aria-label="Bass notes. Use arrow keys to inspect steps."></div></div>
+        <div class="track-row" data-track="drums"><label class="track-name"><input id="drumsToggle" type="checkbox" checked><span>Drums<small>K / S / H</small></span></label><div id="drumSteps" class="steps" role="group" aria-label="Drum hits. Use arrow keys to inspect steps."></div></div>
+        <div class="track-row" data-track="harmony"><label class="track-name"><input id="harmonyToggle" type="checkbox" checked><span>Harmony<small>CHORDS</small></span></label><div id="harmonySteps" class="steps" role="group" aria-label="Harmony notes. Use arrow keys to inspect steps."></div></div>
+        </div></div>
+        <div class="pattern-caption"><span id="noteReadout">Read-only preview · select a step to inspect its notes.</span><span class="micro">16 steps = 1 bar<span class="scroll-hint"> · swipe to see all steps</span></span></div>
       </section>
       <div class="arrangement">
         <section class="panel library-panel" aria-labelledby="libraryHeading">
-          <div class="panel-head"><h2 id="libraryHeading">Loop library <span id="libraryCount" class="badge">0</span></h2><div class="inline-actions loop-export"><label class="sr-only" for="loopExportMode">Loop WAV length</label><select id="loopExportMode" title="With tail keeps the final release. Loop-length exports one musical cycle after effects pre-roll."><option value="tail">With tail</option><option value="loop">Loop-length</option></select><button id="exportLoopBtn" class="small-button" title="Export the editor loop in the selected WAV length">WAV ↓</button></div></div>
-          <div class="save-row"><label class="sr-only" for="loopNameInput">Loop name</label><input id="loopNameInput" type="text" maxlength="96" value="New Loop" placeholder="Name this loop"><button id="saveLoopBtn" class="primary" title="Save an independent snapshot; future editor changes leave it intact">Save</button></div>
+          <div class="panel-head"><h2 id="libraryHeading"><span class="section-number" aria-hidden="true">03</span> Loop library <span id="libraryCount" class="badge">0</span></h2><div class="inline-actions loop-export"><label class="sr-only" for="loopExportMode">Loop WAV length</label><select id="loopExportMode" title="With tail keeps the final release. Loop-length exports one musical cycle after effects pre-roll."><option value="tail">With tail</option><option value="loop">Loop-length</option></select><button id="exportLoopBtn" class="small-button" title="Export the editor loop in the selected WAV length">WAV ↓</button></div></div>
+          <div class="save-row"><label class="sr-only" for="loopNameInput">Loop name</label><input aria-label="Loop name" id="loopNameInput" type="text" maxlength="96" value="New Loop" placeholder="Name this loop"><button id="saveLoopBtn" class="primary" title="Save an independent snapshot; future editor changes leave it intact">Save</button></div>
           <label class="sr-only" for="librarySearch">Filter saved loops by name, key, scale, tempo or seed</label><input id="librarySearch" type="search" maxlength="128" placeholder="Filter saved loops…" autocomplete="off">
           <div id="savedLoops" class="saved-loops"><p class="empty-state">Save a loop, then add it to your timeline.</p></div>
         </section>
         <section class="panel timeline-panel" aria-labelledby="timelineHeading">
-          <div class="panel-head"><h2 id="timelineHeading">Timeline <span id="timelineCount" class="badge">0</span></h2><div class="inline-actions"><button id="clearTimelineBtn" class="small-button subtle" disabled>Clear</button><button id="exportTimelineBtn" class="small-button" disabled>Song WAV ↓</button></div></div>
-          <div class="timeline-summary"><span id="timelineDuration">0.0s total</span><span class="micro">Drag to reorder · arrows work too</span></div>
+          <div class="panel-head"><h2 id="timelineHeading"><span class="section-number" aria-hidden="true">04</span> Timeline <span id="timelineCount" class="badge">0</span></h2><div class="inline-actions"><button id="clearTimelineBtn" class="small-button subtle" disabled>Clear</button><button id="exportTimelineBtn" class="small-button" disabled>Song WAV ↓</button></div></div>
+          <div class="timeline-summary"><span id="timelineDuration">0.0s total</span><span class="micro">Drag to reorder · or use arrows</span></div>
           <div id="timelineDropzone" class="timeline-dropzone"><p id="timelineEmpty" class="empty-state">Drop saved loops here, or use <strong>+ Add</strong> in the library.</p><div id="timelineItems" class="timeline-items"></div></div>
         </section>
       </div>
@@ -106,9 +110,21 @@
         <span id="storageState" class="micro">Local autosave</span><span class="shortcuts micro"><kbd>Space</kbd> play / stop · <kbd>G</kbd> new pattern</span>
       </footer>
       <div id="recoveryActions" class="recovery-actions" hidden><span>Saved data is protected.</span><button id="recoverBtn" class="small-button">Saved data ↓</button><button id="resumeSaveBtn" class="small-button">Keep this project</button></div>
-      <div class="notice" id="notice" role="status" aria-live="polite"><span id="noticeText">Ready. Generate, save, arrange.</span></div>
+      <div class="notice" id="notice" role="status" aria-live="polite"><span id="noticeText">Choose a preset or press Play. Save the loops you like.</span></div>
     </main>
   </div>
+  <dialog id="helpDialog" aria-labelledby="guideTitle">
+    <div class="panel-head"><div><p class="guide-kicker">8-BIT / QUICK START</p><h2 id="guideTitle">From a loop to a song.</h2></div><button id="closeHelpBtn" aria-label="Close guide">Close ×</button></div>
+    <ol class="guide-steps">
+      <li><strong>Find a sound.</strong> Choose a preset and press <b>Play</b>. <b>New pattern</b> keeps your settings; <b>Randomize</b> changes them too.</li>
+      <li><strong>Shape it.</strong> Adjust key, rhythm, melody and sound. Track checkboxes mute voices. The pattern is a read-only preview: select a step for notes, or use arrow keys after focusing a step.</li>
+      <li><strong>Keep and arrange.</strong> Name a loop and <b>Save</b>. Use <b>+ Add</b> to put it on the timeline, then choose <b>Timeline</b> and Play. Each clip keeps its own settings.</li>
+      <li><strong>Take it with you.</strong> <b>WAV ↓</b> exports the editor; <b>Song WAV ↓</b> exports the arrangement. <b>Project ↓</b> backs up your editable work. Import restores it.</li>
+    </ol>
+    <p class="guide-note"><b>Saved clips never change with the editor.</b> Load, edit, then Save a new version. Changes during playback restart the loop.</p>
+    <dl class="guide-keys"><dt>Space / G</dt><dd>Play or stop / new pattern</dd><dt>Ctrl or Cmd + Z</dt><dd>Undo; add Shift to redo</dd><dt>Arrow keys</dt><dd>Inspect notes when a step has focus</dd></dl>
+    <p class="micro">Shortcuts leave text fields alone. Autosave stays in this browser; use Project ↓ for a durable backup. Undo history ends when you reload.</p>
+  </dialog>
   <noscript><p class="panel">Enable JavaScript to generate music. No external scripts or services are required.</p></noscript>
 </body>
 </html>
