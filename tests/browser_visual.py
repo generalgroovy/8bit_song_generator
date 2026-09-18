@@ -90,6 +90,14 @@ def run():
             check(page.locator('#tempoRange').evaluate('el=>el.style.getPropertyValue("--fill")')=='0%', 'Slider fill starts at its actual minimum')
             page.locator('#tempoRange').evaluate('el=>{el.value=190;el.dispatchEvent(new Event("input",{bubbles:true}));}')
             check(page.locator('#tempoRange').evaluate('el=>el.style.getPropertyValue("--fill")')=='100%', 'Slider fill reaches its actual maximum')
+            # A wider system font exposed header overflow in normal-HTTP CI.
+            # Exercise metric variation without changing or bundling a font.
+            page.set_viewport_size({'width':768,'height':1024})
+            metric_style=page.add_style_tag(content='.transport { font-size:18px; } .transport button,.mode-switch span { font-size:18px; }')
+            page.wait_for_function('Math.abs(parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--transport-height"))-document.querySelector(".transport").getBoundingClientRect().height)<1')
+            check(page.evaluate('document.documentElement.scrollWidth<=innerWidth && parseFloat(getComputedStyle(document.querySelector(".controls")).top)>document.querySelector(".transport").getBoundingClientRect().height'), 'Tablet header wraps for wider font metrics and sidebar offset follows its height')
+            metric_style.evaluate('el=>el.remove()')
+            page.set_viewport_size({'width':1366,'height':768})
             before_guide = page.evaluate('ChipApp.snapshot()')
             page.locator('#helpBtn').click()
             check(page.locator('#helpDialog').evaluate('el=>el.open') and page.locator('#closeHelpBtn').evaluate('el=>el===document.activeElement'), 'Native guide opens with focus on its close control')

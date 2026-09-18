@@ -524,8 +524,15 @@
   });
   reducedMotion.addEventListener('change',()=>{drawSpectrum();transportUI();});
   bindDragEvents();
-  if(window.ResizeObserver)new ResizeObserver(resizeCanvas).observe(ui.viz);
-  else window.addEventListener('resize',resizeCanvas);
+  const transport=document.querySelector('.transport');
+  function measureTransport() {
+    document.documentElement.style.setProperty('--transport-height',`${Math.ceil(transport.getBoundingClientRect().height)}px`);
+  }
+  measureTransport();
+  if(window.ResizeObserver) {
+    new ResizeObserver(resizeCanvas).observe(ui.viz);
+    new ResizeObserver(measureTransport).observe(transport);
+  } else window.addEventListener('resize',()=>{resizeCanvas();measureTransport();});
   window.addEventListener('pagehide',()=>{if(saveTimer)persistNow();stop();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){if(saveTimer)persistNow();cancelFrame();}else if(engine.playing&&frameId===null)frameId=requestAnimationFrame(animate);});
   syncInputs();renderEditor();renderLibrary();renderTimeline();resizeCanvas();

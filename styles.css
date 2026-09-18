@@ -1,6 +1,7 @@
 /* Instrument faceplate: quiet controls, a dark musical display, four voice inks. */
 :root {
   color-scheme:light;
+  --transport-height:66px;
   --bg:#deded3; --panel:#f5f4eb; --raised:#fffef7; --border:#b7bdad;
   --text:#24312a; --muted:#596357; --accent:#efbe55; --danger:#a23224;
   --screen:#1c2926; --screen-raised:#293733; --screen-line:#46564e;
@@ -35,7 +36,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 :disabled { cursor:default; }
 h1,h2,h3,p,figure { margin:0; }
 h2 { font-size:1rem; font-weight:720; letter-spacing:-.025em; }
-.transport { color-scheme:dark; position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:16px; padding:10px 20px; border-bottom:3px solid var(--accent); background:#23312d; color:var(--screen-text); }
+.transport { color-scheme:dark; position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; align-items:center; gap:16px; padding:10px 20px; border-bottom:3px solid var(--accent); background:#23312d; color:var(--screen-text); }
 .brand { display:flex; align-items:center; gap:10px; margin-right:8px; flex-shrink:0; }
 .brand-mark { display:block; color:var(--accent); line-height:0; }
 h1 { font-size:1.35rem; white-space:nowrap; letter-spacing:.015em; line-height:1.05; }
@@ -65,7 +66,7 @@ body[data-playing=true] #playState::before { background:var(--lead); }
 .panel { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); min-width:0; padding:12px; }
 .panel-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
 .section-number { display:inline-block; font:10px var(--mono); color:var(--muted); margin-right:7px; border-bottom:2px solid currentColor; padding-bottom:2px; vertical-align:2px; }
-.controls { position:sticky; top:82px; background:#eceee0; border-top:3px solid #6d8157; }
+.controls { position:sticky; top:calc(var(--transport-height) + 14px); background:#eceee0; border-top:3px solid #6d8157; }
 .controls>.panel-head { margin-bottom:11px; }
 .controls>.panel-head>.micro { font:9px var(--mono); letter-spacing:.07em; }
 .generate-actions { display:grid; grid-template-columns:1.2fr 1fr; gap:6px; }
@@ -81,7 +82,7 @@ output { color:var(--text); font:11px var(--mono); font-variant-numeric:tabular-
 .preset-field,.harmony-field { margin-top:10px; display:grid; align-items:center; gap:6px; }
 .preset-field { grid-template-columns:42px minmax(0,1fr); }
 .harmony-field { grid-template-columns:62px minmax(0,1fr); }
-.workspace { display:grid; gap:12px; min-width:0; scroll-margin-top:85px; }
+.workspace { display:grid; gap:12px; min-width:0; scroll-margin-top:calc(var(--transport-height) + 16px); }
 .overview { display:grid; grid-template-columns:minmax(0,1fr) minmax(180px,.92fr); gap:20px; align-items:center; border-top:3px solid #7f876e; }
 .eyebrow { display:flex; align-items:center; gap:8px; color:var(--muted); font:10px var(--mono); text-transform:uppercase; letter-spacing:.05em; margin-bottom:7px; }
 #songTitle { font-size:1.85rem; font-weight:780; letter-spacing:-.055em; line-height:1.1; margin-bottom:10px; overflow-wrap:anywhere; }
@@ -182,7 +183,7 @@ dialog h2 { font-size:1.5rem; margin-top:4px; }
 .guide-keys { display:grid; grid-template-columns:auto 1fr; gap:8px 18px; font-size:.8rem; margin:16px 0; }
 .guide-keys dt { font-family:var(--mono); }
 .guide-keys dd { margin:0; color:var(--muted); }
-@media (min-width:741px) { .controls { max-height:calc(100dvh - 98px); overflow-y:auto; scrollbar-gutter:stable; } .saved-loops { max-height:clamp(145px,calc(100dvh - 660px),330px); } }
+@media (min-width:741px) { .controls { max-height:calc(100dvh - var(--transport-height) - 30px); overflow-y:auto; scrollbar-gutter:stable; } .saved-loops { max-height:clamp(145px,calc(100dvh - 660px),330px); } }
 @media (min-width:1500px) { .app { grid-template-columns:306px minmax(0,1fr); } .step { height:41px; } }
 @media (max-width:1100px) {
   .transport { gap:10px; padding:9px 12px; }
@@ -209,7 +210,7 @@ dialog h2 { font-size:1.5rem; margin-top:4px; }
   .controls { position:static; }
   .controls .field-grid { gap:6px 16px; }
   .overview { grid-template-columns:minmax(0,1fr) minmax(130px,.65fr); }
-  .workspace { scroll-margin-top:120px; }
+  .workspace { scroll-margin-top:calc(var(--transport-height) + 12px); }
   .pattern-grid { min-width:700px; }
   .step { height:40px; }
   .shortcuts { display:none; }
