@@ -3,6 +3,11 @@
   'use strict';
   const C = typeof module !== 'undefined' && module.exports ? require('./core.js') : root.ChipCore;
   const MAX_RENDER_SECONDS = 180;
+  const MAX_RENDER_SAMPLES = 8 * 1024 * 1024;
+  function volumeLevel(value) {
+    if(!Number.isFinite(value))throw new RangeError('Volume must be a finite number.');
+    return Math.max(0,Math.min(1,value));
+  }
   const noiseCaches = new WeakMap();
   const disconnect = node => { try { node.disconnect(); } catch { /* Already disconnected. */ } };
   function noiseBuffer(ctx, seed, duration) {
@@ -109,7 +114,7 @@
     constructor() {
       this.ctx=null; this.master=null; this.analyser=null; this.data=null;
       this.voices=new Map(); this.buses=new Map(); this.visualQueue=[];
-      this.playing=false; this.timer=null; this.revision=0; this.starts=0; this.resyncs=0;
+      this.playing=false; this.wantsPlayback=false; this.timer=null; this.revision=0; this.starts=0; this.resyncs=0;
     }
     ensureAudio() {
       if (this.ctx&&this.ctx.state!=='closed') return;
@@ -121,7 +126,11 @@
       this.master.connect(this.analyser); this.analyser.connect(this.ctx.destination);
     }
     setVolume(value) {
-      if (this.master) this.master.gain.setTargetAtTime(Math.max(0,Math.min(1,value)),this.ctx.currentTime,0.01);
+      const level=volumeLevel(value);
+      if (this.master) {
+        this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+        this.master.gain.setTargetAtTime(level,this.ctx.currentTime,0.01);
+      }
     }
     halt() {
       this.playing=false;
@@ -132,22 +141,35 @@
       this.visualQueue.length=0;
     }
     async start(sequence,volume=0.72) {
-      const compiled=C.compileSequence(sequence);
+      const level=volumeLevel(volume),compiled=C.compileSequence(sequence);
       const ticket=++this.revision;
-      this.halt(); this.ensureAudio();
-      await this.ctx.resume();
-      if (ticket!==this.revision) return false; // Stop wins over an in-flight resume.
-      this.compiled=compiled;
-      this.master.gain.setValueAtTime(Math.max(0,Math.min(1,volume)),this.ctx.currentTime);
-      for (const clip of compiled.clips) {
-        const key=busKey(clip.params);
-        if (!this.buses.has(key)) this.buses.set(key,createBus(this.ctx,this.master,clip.params));
+      this.wantsPlayback=true;this.halt();
+      try {
+        this.ensureAudio();
+        const ctx=this.ctx;
+        await ctx.resume();
+        if (ticket!==this.revision) {
+          // A canceled resume can finish AFTER Stop already saw a suspended context.
+          // Do not suspend here when a newer Play request owns the same context.
+          if(!this.wantsPlayback&&ctx.state!=='closed')await ctx.suspend().catch(()=>{});
+          return false;
+        }
+        this.compiled=compiled;
+        this.master.gain.cancelScheduledValues(ctx.currentTime);
+        this.master.gain.setValueAtTime(level,ctx.currentTime);
+        for (const clip of compiled.clips) {
+          const key=busKey(clip.params);
+          if (!this.buses.has(key)) this.buses.set(key,createBus(ctx,this.master,clip.params));
+        }
+        this.epoch=ctx.currentTime+0.04;this.cycle=0;this.eventIndex=0;
+        this.playing=true;this.starts++;
+        this.tick();this.timer=setInterval(()=>this.tick(),25);
+        return true;
+      } catch(error) {
+        // An older rejected request must not tear down a newer successful start.
+        if(ticket===this.revision){this.wantsPlayback=false;this.halt();if(this.ctx&&this.ctx.state!=='closed')await this.ctx.suspend().catch(()=>{});}
+        throw error;
       }
-      this.epoch=this.ctx.currentTime+0.04; this.cycle=0; this.eventIndex=0;
-      this.playing=true; this.starts++;
-      this.tick();
-      this.timer=setInterval(()=>this.tick(),25);
-      return true;
     }
     advance() {
       this.eventIndex++;
@@ -189,8 +211,8 @@
     }
     frequencies() { if (this.analyser) this.analyser.getByteFrequencyData(this.data); return this.data; }
     stop() {
-      ++this.revision; this.halt();
-      if (this.ctx&&this.ctx.state==='running') return this.ctx.suspend().catch(()=>{});
+      ++this.revision;this.wantsPlayback=false;this.halt();
+      if (this.ctx&&this.ctx.state!=='closed') return this.ctx.suspend().catch(()=>{});
       return Promise.resolve();
     }
     get diagnostics() {
@@ -213,31 +235,44 @@
     }
     return new Blob([bytes],{type:'audio/wav'});
   }
-  async function renderWav(sequence,{volume=0.72,sampleRate=44100,onProgress=()=>{}}={}) {
+  function planRender(sequence,{volume=0.72,sampleRate=44100,loopable=false}={}) {
+    if (!Number.isInteger(sampleRate)||sampleRate<8000||sampleRate>192000||!Number.isFinite(volume)||volume<0||volume>1||typeof loopable!=='boolean') throw new Error('Invalid export settings.');
     const seq=C.compileSequence(sequence);
     if (seq.duration>MAX_RENDER_SECONDS) throw new Error(`Export is limited to ${MAX_RENDER_SECONDS/60} minutes per file to protect browser memory. Shorten the timeline.`);
-    if (!Number.isInteger(sampleRate)||sampleRate<8000||sampleRate>192000||!Number.isFinite(volume)||volume<0||volume>1) throw new Error('Invalid export settings.');
+    if(loopable&&seq.clips.length!==1)throw new Error('Loop-length export requires one loop. Use song export for an arrangement.');
+    const tail=Math.max(...seq.clips.map(c=>6.5*60/c.params.tempo/4+(c.params.echo?Math.min(0.3,60/c.params.tempo/2)*6:0)))+0.05;
+    // Pre-roll only the preceding effect-tail interval, not a whole extra long loop.
+    const offsetFrames=loopable?Math.ceil(tail*sampleRate):0;
+    const outputFrames=loopable?Math.round(seq.duration*sampleRate):Math.ceil((seq.duration+tail)*sampleRate);
+    const renderFrames=offsetFrames+outputFrames;
+    if(renderFrames>MAX_RENDER_SAMPLES)throw new Error('Export exceeds the sample memory budget. Use a lower sample rate or a shorter arrangement.');
+    return {seq,sampleRate,volume,loopable,offsetFrames,outputFrames,renderFrames,preRoll:offsetFrames/sampleRate};
+  }
+  async function renderWav(sequence,{onProgress=()=>{},...options}={}) {
+    const plan=planRender(sequence,options),{seq,sampleRate,volume,preRoll}=plan;
     const OAC=root.OfflineAudioContext||root.webkitOfflineAudioContext;
     if (!OAC) throw new Error('Offline audio export is not supported in this browser.');
-    const tail=Math.max(...seq.clips.map(c=>6.5*60/c.params.tempo/4+(c.params.echo?Math.min(0.3,60/c.params.tempo/2)*6:0)))+0.05;
-    const ctx=new OAC(1,Math.ceil((seq.duration+tail)*sampleRate),sampleRate);
-    const master=ctx.createGain(); master.gain.value=volume; master.connect(ctx.destination);
-    const voices=new Map(),buses=new Map();
-    voices.deferCleanup=true;
+    const ctx=new OAC(1,plan.renderFrames,sampleRate);
+    const master=ctx.createGain();master.gain.value=volume;master.connect(ctx.destination);
+    const voices=new Map(),buses=new Map();voices.deferCleanup=true;
     try {
       for (const clip of seq.clips) if (!buses.has(busKey(clip.params))) buses.set(busKey(clip.params),createBus(ctx,master,clip.params));
-      for (let i=0;i<seq.events.length;i++) {
-        const event=seq.events[i],clip=seq.clips[event.clipIndex];
-        scheduleStep(ctx,buses.get(busKey(clip.params)),voices,clip,event.step,event.offset);
-        if (i%256===0) { onProgress('Preparing audio…'); await new Promise(resolve=>setTimeout(resolve,0)); }
+      let prepared=0;
+      const firstCycle=plan.loopable?-Math.ceil(preRoll/seq.duration):0;
+      for(let cycle=firstCycle;cycle<=0;cycle++)for(const event of seq.events) {
+        const when=preRoll+cycle*seq.duration+event.offset;
+        if(when<0)continue;
+        const clip=seq.clips[event.clipIndex];
+        scheduleStep(ctx,buses.get(busKey(clip.params)),voices,clip,event.step,when);
+        if(prepared++%256===0){onProgress('Preparing audio…');await new Promise(resolve=>setTimeout(resolve,0));}
       }
       onProgress('Rendering WAV…');
       const result=await ctx.startRendering();
       onProgress('Encoding WAV…');
-      return encodeWav(result.getChannelData(0),sampleRate);
-    } finally { clearVoices(voices); buses.forEach(bus=>bus.dispose()); disconnect(master); }
+      return encodeWav(result.getChannelData(0).subarray(plan.offsetFrames,plan.offsetFrames+plan.outputFrames),sampleRate);
+    } finally {clearVoices(voices);buses.forEach(bus=>bus.dispose());disconnect(master);}
   }
-  const api=Object.freeze({Engine,renderWav,encodeWav,MAX_RENDER_SECONDS});
+  const api=Object.freeze({Engine,renderWav,planRender,encodeWav,MAX_RENDER_SECONDS,MAX_RENDER_SAMPLES});
   if (typeof module!=='undefined'&&module.exports) module.exports=api;
   else root.ChipAudio=api;
 })(globalThis);

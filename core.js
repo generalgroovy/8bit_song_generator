@@ -22,7 +22,7 @@
   const DEFAULTS = Object.freeze({
     key:'C', scale:'minor', tempo:120, bars:4, swing:0.08, density:0.68,
     variation:0.46, octave:4, arpBias:0.42, echo:0.14, crunch:0.35, seed:4312,
-    leadWave:'square', bassWave:'triangle', leadOn:true, bassOn:true, drumsOn:true, harmonyOn:true
+    leadWave:'square', bassWave:'triangle', harmonyMode:'legacy', leadOn:true, bassOn:true, drumsOn:true, harmonyOn:true
   });
   const RANGES = Object.freeze({tempo:[70,190,true], bars:[1,8,true], swing:[0,0.35],
     density:[0.2,1], variation:[0,1], octave:[3,6,true], arpBias:[0,1], echo:[0,0.45],
@@ -58,6 +58,11 @@
     for (const [key, values] of Object.entries(choices)) {
       if (strict && !values.includes(raw[key])) throw new Error(`Invalid ${key} in project.`);
       if (values.includes(raw[key])) p[key] = raw[key];
+    }
+    // Version-1 projects predate scale-locked harmony; missing means legacy sound.
+    if (Object.hasOwn(raw,'harmonyMode')) {
+      if (strict && !['legacy','scale'].includes(raw.harmonyMode)) throw new Error('Invalid harmony mode in project.');
+      if (['legacy','scale'].includes(raw.harmonyMode)) p.harmonyMode=raw.harmonyMode;
     }
     for (const key of ['leadOn','bassOn','drumsOn','harmonyOn']) {
       if (strict && typeof raw[key] !== 'boolean') throw new Error(`Invalid ${key} in project.`);
@@ -110,7 +115,8 @@
         const rootNote = leadScale[degree%leadScale.length]-12;
         const minorish = ['minor','harmonic_minor','melodic_minor','dorian','phrygian','locrian','hungarian_minor',
           'persian','romanian_minor','ukrainian_dorian','blues','phrygian_dominant','altered','iwato','in_sen'];
-        harmonyNotes = [rootNote,rootNote+(minorish.includes(p.scale)?3:4),rootNote+7];
+        harmonyNotes = p.harmonyMode==='scale' ? chordPool.map(midi=>midi-12)
+          : [rootNote,rootNote+(minorish.includes(p.scale)?3:4),rootNote+7];
       }
       harmony.push(harmonyNotes);
     }
@@ -155,11 +161,16 @@
     let data;
     try { data = JSON.parse(text); } catch { throw new Error('The project is not valid JSON.'); }
     if (!data||data.version!==1) throw new Error('Unsupported project version.');
+    const ids = new Set();
     const unpack = list => {
       if (!Array.isArray(list)||list.length>MAX_CLIPS) throw new Error('Invalid clip list (maximum 128 per list).');
       return list.map(c => {
         if (!c||typeof c.name!=='string') throw new Error('A clip is missing its name.');
-        return makeClip(c.name,normalizeParams(c.params,true));
+        // Stable, bounded IDs preserve identity through undo/redo and round-trips.
+        let id=c.id;
+        if (typeof id!=='string'||!/^[a-zA-Z0-9_-]{1,96}$/.test(id)||ids.has(id)) id=uid();
+        ids.add(id);
+        return makeClip(c.name,normalizeParams(c.params,true),id);
       });
     };
     if (typeof data.volume!=='number'||!Number.isFinite(data.volume)||data.volume<0||data.volume>1) throw new Error('Invalid project volume.');
@@ -174,7 +185,15 @@
     list.splice(toIndex,0,clip);
     return true;
   }
-  const api = Object.freeze({NOTES,SCALES,DEFAULTS,RANGES,MAX_CLIPS,clone,pretty,midiToFreq,noteName,uid,mulberry32,
+  const PRESETS = Object.freeze([
+    ['arcade','Arcade sprint',{key:'C',scale:'major',tempo:156,density:0.78,variation:0.38,arpBias:0.7,seed:8201,echo:0.1}],
+    ['night','Night drive',{key:'D',scale:'dorian',tempo:112,swing:0.2,density:0.56,variation:0.4,seed:6284,echo:0.26,crunch:0.45}],
+    ['boss','Boss rush',{key:'E',scale:'harmonic_minor',tempo:180,density:0.86,variation:0.72,seed:9142,leadWave:'sawtooth',crunch:0.72,echo:0.08}],
+    ['puzzle','Pocket puzzle',{key:'G',scale:'pentatonic_major',tempo:104,density:0.45,variation:0.28,seed:3107,leadWave:'triangle',echo:0.12,crunch:0.18}],
+    ['dungeon','Dungeon echo',{key:'A',scale:'phrygian',tempo:82,density:0.38,variation:0.3,octave:3,seed:7703,echo:0.4,crunch:0.48}],
+    ['savepoint','Soft savepoint',{key:'F',scale:'lydian',tempo:90,density:0.35,variation:0.18,seed:1529,leadWave:'triangle',drumsOn:false,echo:0.32,crunch:0.1}]
+  ].map(([id,name,params])=>Object.freeze({id,name,params:Object.freeze(normalizeParams({...DEFAULTS,...params,harmonyMode:'scale'}))})));
+  const api = Object.freeze({NOTES,SCALES,DEFAULTS,RANGES,PRESETS,MAX_CLIPS,clone,pretty,midiToFreq,noteName,uid,mulberry32,
     normalizeParams,generateLoop,makeClip,duration,sequenceDuration,compileSequence,randomParams,serializeProject,parseProject,moveClip});
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ChipCore = api;

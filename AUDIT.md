@@ -1,5 +1,7 @@
 # Compact studio audit and validation
 
+Historical initial pass (commit `e6ec2c0`). See [ITERATION.md](ITERATION.md) for the current 1.1 findings and validation, including expanded history, saving protection and export modes. Counts and limitations below describe the initial pass, not the latest test totals.
+
 Date: 2026-09-18. Inspected baseline: `7bb8dcf8abfc588f41462a3b4066981fb26ec40b` on `main`.
 
 The baseline repository contained only a 64,092-byte `index.html`, with no tests or setup documentation. This change keeps a no-build static application and separates its responsibilities into five small runtime files. It is a maintainability and rendering/audio-work improvement, not a claim of smaller total download size.

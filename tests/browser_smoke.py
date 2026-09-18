@@ -37,7 +37,7 @@ def run() -> None:
     html = (ROOT / 'index.html').read_text()
     html = re.sub(r'<script defer src="[^"]+"></script>', '', html)
     html = html.replace('<link rel="stylesheet" href="styles.css">', '<style>' + (ROOT / 'styles.css').read_text() + '</style>')
-    html = html.replace('</body>', ''.join('<script>' + (ROOT / name).read_text() + '</script>' for name in ['core.js', 'audio.js', 'app.js']) + '</body>')
+    html = html.replace('</body>', ''.join('<script>' + (ROOT / name).read_text() + '</script>' for name in ['core.js', 'audio.js', 'session.js', 'app.js']) + '</body>')
 
     def check(condition, description):
         assert condition, description

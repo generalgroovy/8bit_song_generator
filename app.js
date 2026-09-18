@@ -1,48 +1,72 @@
 (function () {
   'use strict';
-  const C=window.ChipCore,A=window.ChipAudio;
+  const C=window.ChipCore,A=window.ChipAudio,S=window.ChipSession;
   const ui=Object.fromEntries([...document.querySelectorAll('[id]')].map(el=>[el.id,el]));
   const STORAGE_KEY='8bit-loop-studio:v1';
   const engine=new A.Engine();
   let state={params:{...C.DEFAULTS},name:'New Loop',volume:0.72,playMode:'loop',savedLoops:[],timeline:[]};
   let startupMessage='',storageAvailable=true;
+  const store=new S.ProjectStore(()=>localStorage,STORAGE_KEY,C.parseProject);
   try {
-    const saved=localStorage.getItem(STORAGE_KEY);
-    if(saved) { state=C.parseProject(saved); startupMessage='Restored your local project.'; }
+    const saved=store.load();
+    if(saved) { state=saved; startupMessage='Restored your local project.'; }
   } catch(error) { storageAvailable=false; startupMessage=`Local project could not be restored: ${error.message} Use Project ↓ for backups.`; }
   state.loop=C.generateLoop(state.params);
+  const history=new S.History(C.serializeProject(state));
   const fields={key:'keySelect',scale:'scaleSelect',tempo:'tempoRange',bars:'barsRange',swing:'swingRange',
     density:'densityRange',variation:'variationRange',octave:'octaveRange',arpBias:'arpRange',echo:'echoRange',
-    crunch:'bitcrushRange',seed:'seedInput',leadWave:'leadWaveSelect',bassWave:'bassWaveSelect',
+    crunch:'bitcrushRange',seed:'seedInput',harmonyMode:'harmonyModeSelect',leadWave:'leadWaveSelect',bassWave:'bassWaveSelect',
     leadOn:'leadToggle',bassOn:'bassToggle',drumsOn:'drumsToggle',harmonyOn:'harmonyToggle'};
-  const patternKeys=new Set(['key','scale','bars','density','variation','octave','arpBias','seed']);
+  const patternKeys=new Set(['key','scale','bars','density','variation','octave','arpBias','seed','harmonyMode']);
   const outputs={tempo:'tempoValue',bars:'barsValue',swing:'swingValue',density:'densityValue',variation:'variationValue',
     octave:'octaveValue',arpBias:'arpValue',echo:'echoValue',crunch:'bitcrushValue'};
   const trackNames={lead:'leadSteps',bass:'bassSteps',drums:'drumSteps',harmony:'harmonySteps'};
   const cells={};
   let frameId=null,lastFrame=0,starting=false,transportTicket=0,editTimer=null,saveTimer=null;
   let lastGridLoop=null,lastGridBar=-1,lastHighlight=-1,lastClipId=null,highlightedTimelineId=null;
-  let exportBusy=false,undoAction=null,drag=null;
+  let exportBusy=false,drag=null,previewBar=0,importTicket=0;
   const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
   const element=(tag,className='',text)=>{const el=document.createElement(tag);el.className=className;if(text!==undefined)el.textContent=text;return el;};
-  function notice(message,{error=false,undo=null}={}) {
-    ui.noticeText.textContent=message;
-    ui.notice.classList.toggle('error',error);
-    undoAction=undo;
-    ui.undoBtn.hidden=!undo;
+  function updateHistory() {
+    ui.undoBtn.disabled=exportBusy||!history.canUndo;ui.redoBtn.disabled=exportBusy||!history.canRedo;
+    ui.undoBtn.title=history.canUndo?`Undo: ${history.undoLabel}`:'Nothing to undo';
+    ui.redoBtn.title=history.canRedo?`Redo: ${history.redoLabel}`:'Nothing to redo';
+  }
+  function notice(message,{error=false}={}) {
+    ui.noticeText.textContent=message;ui.notice.classList.toggle('error',error);
+  }
+  function storageUI() {
+    ui.recoveryActions.hidden=!store.blocked;
+    ui.storageState.textContent=store.blocked?'Autosave paused — saved data protected':storageAvailable?(store.last===null?'Local autosave':'Saved on this device'):'Autosave unavailable — use Project ↓';
   }
   function persistNow() {
-    clearTimeout(saveTimer); saveTimer=null;
-    try { localStorage.setItem(STORAGE_KEY,C.serializeProject(state));storageAvailable=true;ui.storageState.textContent='Saved on this device'; }
-    catch { storageAvailable=false;ui.storageState.textContent='Autosave unavailable — use Project ↓'; }
+    clearTimeout(saveTimer);saveTimer=null;
+    try {store.save(C.serializeProject(state));storageAvailable=true;}
+    catch {storageAvailable=false;}
+    storageUI();
   }
-  function persist() { clearTimeout(saveTimer);saveTimer=setTimeout(persistNow,200); }
+  function persist(label='Edit project',group=null) {
+    history.record(C.serializeProject(state),label,group);updateHistory();
+    clearTimeout(saveTimer);saveTimer=setTimeout(persistNow,200);
+  }
+  function restoreSnapshot(text) {
+    const restored=C.parseProject(text);
+    stop();state={...restored,loop:C.generateLoop(restored.params)};
+    syncInputs();renderEditor();renderLibrary();renderTimeline();updateHistory();persistNow();
+  }
+  function travelHistory(redo=false) {
+    if(exportBusy)return;
+    const label=redo?history.redoLabel:history.undoLabel;
+    const text=redo?history.redo():history.undo();
+    if(text!==null){restoreSnapshot(text);notice(`${redo?'Redone':'Undone'}: ${label}.`);}
+  }
   function currentClip() { return {id:'editor',name:state.name||'Current loop',params:state.params,loop:state.loop}; }
   function showValues() {
     for(const [key,id] of Object.entries(outputs)) {
       const p=state.params[key];
       ui[id].textContent=key==='tempo'?`${p} BPM`:['bars','octave'].includes(key)?String(p):`${Math.round(p*100)}%`;
     }
+    ui.presetSelect.value=C.PRESETS.find(p=>Object.keys(p.params).every(key=>p.params[key]===state.params[key]))?.id||'';
     ui.volumeValue.textContent=`${Math.round(state.volume*100)}%`;
   }
   function syncInputs() {
@@ -71,6 +95,12 @@
       cells[track]=Array.from({length:16},()=>{const cell=element('div','step');cell.setAttribute('role','img');ui[id].append(cell);return cell;});
     }
   }
+  function barControls(bar,bars) {
+    if(ui.barSelect.options.length!==bars)ui.barSelect.replaceChildren(...Array.from({length:bars},(_,i)=>new Option(`Bar ${i+1}`,String(i))));
+    ui.barSelect.value=String(bar);
+    const locked=engine.playing||starting;
+    ui.barSelect.disabled=locked;ui.prevBarBtn.disabled=locked||bar===0;ui.nextBarBtn.disabled=locked||bar===bars-1;
+  }
   function displayPattern(clip,localStep=0,playing=false) {
     const bar=Math.min(clip.params.bars-1,Math.floor(localStep/16));
     if(lastGridLoop!==clip.loop||lastGridBar!==bar) {
@@ -97,6 +127,7 @@
       }
       lastHighlight=step;
     }
+    barControls(bar,clip.params.bars);
     ui.currentBar.textContent=`${bar+1} / ${clip.params.bars}`;
     ui.currentStep.textContent=`${localStep%16+1} / 16`;
     ui.transportPosition.textContent=`Bar ${bar+1} · Step ${localStep%16+1}`;
@@ -104,22 +135,24 @@
   function renderEditor() {
     showValues();
     if(!engine.playing||state.playMode==='loop') {
-      showNow(currentClip());displayPattern(currentClip());lastClipId=null;
+      previewBar=Math.min(previewBar,state.params.bars-1);
+      showNow(currentClip());displayPattern(currentClip(),previewBar*16);lastClipId=null;
     }
   }
   function transportUI() {
     const active=engine.playing||starting;
     const lock=active&&state.playMode==='timeline';
-    ui.playBtn.disabled=active||(state.playMode==='timeline'&&!state.timeline.length);
+    ui.playBtn.disabled=exportBusy||active||(state.playMode==='timeline'&&!state.timeline.length);
     ui.stopBtn.disabled=!active;
     ui.playState.textContent=starting?'Starting…':engine.playing?(state.playMode==='timeline'?'Playing timeline':'Playing loop'):'Stopped';
     ui.audioStatus.textContent=active?'Live':'Ready';
     for(const id of Object.values(fields))ui[id].disabled=lock;
-    for(const id of ['rerollBtn','randomBtn','saveLoopBtn','loopNameInput'])ui[id].disabled=lock;
+    for(const id of ['rerollBtn','randomBtn','saveLoopBtn','loopNameInput','presetSelect'])ui[id].disabled=lock;
     ui.exportLoopBtn.disabled=exportBusy;
     ui.exportTimelineBtn.disabled=exportBusy||!state.timeline.length;
     ui.clearTimelineBtn.disabled=!state.timeline.length;
-    ui.importBtn.disabled=exportBusy;
+    ui.importBtn.disabled=exportBusy;ui.loopExportMode.disabled=exportBusy;
+    barControls(Math.max(0,lastGridBar),Number(ui.barSelect.options.length)||state.params.bars);updateHistory();
   }
   function cancelFrame() { if(frameId!==null)cancelAnimationFrame(frameId);frameId=null; }
   const canvasContext=ui.viz.getContext('2d');
@@ -158,6 +191,7 @@
     frameId=requestAnimationFrame(animate);
   }
   async function play() {
+    if(exportBusy){notice('Wait for the current WAV export to finish.');return;}
     clearTimeout(editTimer);editTimer=null;
     if(state.playMode==='timeline'&&!state.timeline.length){notice('Save a loop and add it to the timeline first.');return;}
     const ticket=++transportTicket;
@@ -188,15 +222,15 @@
     if(next[key]===state.params[key])return;
     state.params=next;
     if(patternKeys.has(key))state.loop=C.generateLoop(state.params);
-    renderEditor();persist();
+    renderEditor();persist(`Change ${key}`,key);
     if((engine.playing||starting)&&state.playMode==='loop') {
       clearTimeout(editTimer);editTimer=setTimeout(play,100);
     }
   }
-  function replaceSettings(params) {
+  function replaceSettings(params,name) {
     const wasPlaying=(engine.playing||starting)&&state.playMode==='loop';
-    stop();state.params=C.normalizeParams(params);state.loop=C.generateLoop(state.params);
-    syncInputs();renderEditor();persist();if(wasPlaying)play();
+    stop();previewBar=0;if(typeof name==='string')state.name=name;state.params=C.normalizeParams(params);state.loop=C.generateLoop(state.params);
+    syncInputs();renderEditor();persist(name?`Apply ${name}`:'Generate pattern');if(wasPlaying)play();
   }
   function actionButton(action,label,title) {
     const button=element('button','',label);button.type='button';button.dataset.action=action;
@@ -221,9 +255,11 @@
   }
   function renderLibrary() {
     const fragment=document.createDocumentFragment();
-    state.savedLoops.forEach((clip,i)=>fragment.append(clipCard(clip,'library',i)));
-    if(!state.savedLoops.length)fragment.append(element('p','empty-state','Save a loop, then add it to your timeline.'));
-    ui.savedLoops.replaceChildren(fragment);ui.libraryCount.textContent=state.savedLoops.length;
+    const query=ui.librarySearch.value.trim().toLowerCase();
+    const filtered=state.savedLoops.filter(c=>`${c.name} ${c.params.key} ${C.pretty(c.params.scale)} ${c.params.tempo} ${c.params.seed}`.toLowerCase().includes(query));
+    filtered.forEach((clip,i)=>fragment.append(clipCard(clip,'library',i)));
+    if(!filtered.length)fragment.append(element('p','empty-state',query?'No matching loops. Clear the filter to see your library.':'Save a loop, then add it to your timeline.'));
+    ui.savedLoops.replaceChildren(fragment);ui.libraryCount.textContent=query?`${filtered.length} / ${state.savedLoops.length}`:state.savedLoops.length;
   }
   function renderTimeline() {
     const fragment=document.createDocumentFragment();
@@ -234,10 +270,10 @@
     ui.timelineDuration.textContent=`${C.sequenceDuration(state.timeline).toFixed(1)}s total`;
     transportUI();
   }
-  function mutateTimeline(change,message,undo=null) {
+  function mutateTimeline(change,message) {
     const wasPlaying=(engine.playing||starting)&&state.playMode==='timeline';
     if(wasPlaying)stop();
-    change();renderTimeline();persist();notice(message,{undo});
+    change();renderTimeline();persist(message);notice(message);
     if(wasPlaying&&state.timeline.length)play();
   }
   function addToTimeline(id,index=state.timeline.length) {
@@ -246,8 +282,8 @@
     mutateTimeline(()=>state.timeline.splice(index,0,C.makeClip(clip.name,clip.params)),`Added “${clip.name}” to the timeline.`);
   }
   function loadClip(clip) {
-    stop();state.params={...clip.params};state.loop=C.generateLoop(state.params);state.name=clip.name;state.playMode='loop';
-    syncInputs();renderEditor();transportUI();persist();notice('Loaded into the editor. Saved clips remain unchanged; Save creates a new snapshot.');
+    stop();previewBar=0;state.params={...clip.params};state.loop=C.generateLoop(state.params);state.name=clip.name;state.playMode='loop';
+    syncInputs();renderEditor();transportUI();persist('Load clip');notice('Loaded into the editor. Saved clips remain unchanged; Save creates a new snapshot.');
   }
   function handleClipAction(event,kind) {
     const button=event.target.closest('button[data-action]'),card=event.target.closest('.clip');
@@ -258,15 +294,14 @@
     if(action==='load'){loadClip(clip);return;}
     if(action==='add'){addToTimeline(clip.id);return;}
     if(kind==='library'&&action==='remove') {
-      const previous=state.savedLoops.slice();state.savedLoops.splice(index,1);renderLibrary();persist();
-      notice('Removed from library. Existing timeline clips are kept.',{undo:()=>{state.savedLoops=previous;renderLibrary();persist();}});return;
+      state.savedLoops.splice(index,1);renderLibrary();persist('Remove library loop');
+      notice('Removed from library. Existing timeline clips are kept. Undo is available.');return;
     }
     if(action==='copy') {
       if(list.length>=C.MAX_CLIPS){notice('Timeline is full (128 clips).',{error:true});return;}
       mutateTimeline(()=>list.splice(index+1,0,C.makeClip(clip.name,clip.params)),'Timeline clip duplicated.');
     } else if(action==='remove') {
-      const previous=state.timeline.slice();
-      mutateTimeline(()=>state.timeline.splice(index,1),'Timeline clip removed.',()=>{mutateTimeline(()=>{state.timeline=previous;},'Timeline restored.');});
+      mutateTimeline(()=>state.timeline.splice(index,1),'Remove timeline clip');
     } else if(action==='left'||action==='right') {
       const newIndex=index+(action==='left'?-1:1);
       mutateTimeline(()=>C.moveClip(state.timeline,clip.id,newIndex),'Timeline order updated.');
@@ -284,11 +319,12 @@
     if(exportBusy)return;
     if(timeline&&!state.timeline.length){notice('Add a clip to the timeline first.');return;}
     const sequence=timeline?state.timeline:[currentClip()];
-    const name=timeline?'timeline_arrangement':filename(state.name);
+    const loopable=!timeline&&ui.loopExportMode.value==='loop';
+    const name=timeline?'timeline_arrangement':filename(state.name)+(loopable?'_loop':'');
     stop();exportBusy=true;transportUI();notice('Preparing audio…');
     try {
-      const wav=await A.renderWav(sequence,{volume:state.volume,onProgress:message=>notice(message)});
-      downloadBlob(wav,`${name}.wav`);notice('WAV exported with the same instruments, echo and crunch as playback, including the effect tail.');
+      const wav=await A.renderWav(sequence,{volume:state.volume,loopable,onProgress:message=>notice(message)});
+      downloadBlob(wav,`${name}.wav`);notice(loopable?'Loop-length WAV exported: one cycle after effect pre-roll, without an added tail.':'WAV exported with the same instruments, echo and crunch as playback, including the effect tail.');
     } catch(error){notice(`Export failed: ${error.message}`,{error:true});}
     finally{exportBusy=false;transportUI();}
   }
@@ -314,10 +350,19 @@
   }
   C.NOTES.forEach(note=>ui.keySelect.append(new Option(note,note)));
   Object.keys(C.SCALES).forEach(scale=>ui.scaleSelect.append(new Option(C.pretty(scale),scale)));
+  C.PRESETS.forEach(preset=>ui.presetSelect.append(new Option(preset.name,preset.id)));
   createSteps();
+  ui.presetSelect.addEventListener('change',()=>{const preset=C.PRESETS.find(p=>p.id===ui.presetSelect.value);if(preset){replaceSettings(preset.params,preset.name);notice(`Applied ${preset.name}. Undo restores your previous loop.`);}});
+  ui.librarySearch.addEventListener('input',renderLibrary);
+  function inspectBar(bar){if(engine.playing||starting)return;previewBar=Math.max(0,Math.min(state.params.bars-1,bar));displayPattern(currentClip(),previewBar*16);}
+  ui.barSelect.addEventListener('change',()=>inspectBar(Number(ui.barSelect.value)));
+  ui.prevBarBtn.addEventListener('click',()=>inspectBar(previewBar-1));
+  ui.nextBarBtn.addEventListener('click',()=>inspectBar(previewBar+1));
   if(window.matchMedia('(max-width: 740px)').matches)document.querySelectorAll('.controls details').forEach(details=>{details.open=false;});
   for(const [key,id] of Object.entries(fields)) {
     ui[id].addEventListener('input',()=>parameterChanged(key));
+    ui[id].addEventListener('change',()=>history.endGroup());
+    ui[id].addEventListener('blur',()=>history.endGroup());
     // Only number validation needs a second event; ranges/selects regenerate once.
     if(ui[id].type==='number')ui[id].addEventListener('change',()=>parameterChanged(key,true));
   }
@@ -325,39 +370,67 @@
   ui.stopBtn.addEventListener('click',stop);
   ui.rerollBtn.addEventListener('click',()=>{let seed;do{seed=Math.floor(Math.random()*999999)+1;}while(seed===state.params.seed);replaceSettings({...state.params,seed});});
   ui.randomBtn.addEventListener('click',()=>replaceSettings(C.randomParams()));
-  ui.volumeRange.addEventListener('input',()=>{state.volume=Number(ui.volumeRange.value)/100;engine.setVolume(state.volume);showValues();persist();});
-  ui.loopNameInput.addEventListener('input',()=>{state.name=ui.loopNameInput.value.slice(0,96);persist();});
+  ui.volumeRange.addEventListener('input',()=>{state.volume=Number(ui.volumeRange.value)/100;engine.setVolume(state.volume);showValues();persist('Change volume','volume');});
+  ui.loopNameInput.addEventListener('input',()=>{state.name=ui.loopNameInput.value.slice(0,96);persist('Rename editor loop','name');});
+  ui.loopNameInput.addEventListener('blur',()=>history.endGroup());
+  ui.volumeRange.addEventListener('change',()=>history.endGroup());
   for(const radio of [ui.modeLoop,ui.modeTimeline])radio.addEventListener('change',()=>{
-    const wasPlaying=engine.playing||starting;stop();state.playMode=ui.modeTimeline.checked?'timeline':'loop';transportUI();persist();
+    const wasPlaying=engine.playing||starting;stop();state.playMode=ui.modeTimeline.checked?'timeline':'loop';transportUI();persist('Change playback mode');
     if(wasPlaying&&(state.playMode==='loop'||state.timeline.length))play();
     else if(state.playMode==='timeline'&&!state.timeline.length)notice('Save a loop and use + Add to build a timeline.');
   });
   ui.saveLoopBtn.addEventListener('click',()=>{
     if(state.savedLoops.length>=C.MAX_CLIPS){notice('Library is full (128 loops). Export a project backup or remove unused loops.',{error:true});return;}
-    const clip=C.makeClip(state.name,state.params);state.savedLoops.unshift(clip);renderLibrary();persist();notice(`Saved “${clip.name}”. Use + Add to arrange it.`);
+    const clip=C.makeClip(state.name,state.params);state.savedLoops.unshift(clip);ui.librarySearch.value='';renderLibrary();persist('Save loop');notice(`Saved “${clip.name}”. Use + Add to arrange it.`);
   });
   ui.savedLoops.addEventListener('click',event=>handleClipAction(event,'library'));
   ui.timelineItems.addEventListener('click',event=>handleClipAction(event,'timeline'));
   ui.clearTimelineBtn.addEventListener('click',()=>{
-    const previous=state.timeline.slice();
-    mutateTimeline(()=>{state.timeline=[];},'Timeline cleared.',()=>{mutateTimeline(()=>{state.timeline=previous;},'Timeline restored.');});
+    mutateTimeline(()=>{state.timeline=[];},'Clear timeline');
   });
-  ui.undoBtn.addEventListener('click',()=>{const undo=undoAction;undoAction=null;ui.undoBtn.hidden=true;if(undo){undo();notice('Change undone.');}});
+  ui.undoBtn.addEventListener('click',()=>travelHistory());
+  ui.redoBtn.addEventListener('click',()=>travelHistory(true));
   ui.exportLoopBtn.addEventListener('click',()=>exportAudio(false));ui.exportTimelineBtn.addEventListener('click',()=>exportAudio(true));
   ui.backupBtn.addEventListener('click',()=>{downloadBlob(new Blob([C.serializeProject(state)],{type:'application/json'}),'8bit_project.json');notice('Project backup exported. Import restores the editor, library and timeline.');});
   ui.importBtn.addEventListener('click',()=>ui.importInput.click());
   ui.importInput.addEventListener('change',async()=>{
     const file=ui.importInput.files?.[0];ui.importInput.value='';if(!file)return;
+    const ticket=++importTicket,before=C.serializeProject(state);
     try {
       if(file.size>1048576)throw new Error('Project files must be smaller than 1 MB.');
       const imported=C.parseProject(await file.text());
-      const previous={params:state.params,name:state.name,volume:state.volume,playMode:state.playMode,savedLoops:state.savedLoops,timeline:state.timeline};
-      stop();state={...imported,loop:C.generateLoop(imported.params)};syncInputs();renderEditor();renderLibrary();renderTimeline();persistNow();
-      notice('Project imported.',{undo:()=>{stop();state={...previous,loop:C.generateLoop(previous.params)};syncInputs();renderEditor();renderLibrary();renderTimeline();persistNow();}});
-    } catch(error){notice(`Import failed: ${error.message} Your current project is unchanged.`,{error:true});}
+      if(ticket!==importTicket)return;
+      if(exportBusy||C.serializeProject(state)!==before)throw new Error('The project changed while reading the file. Retry the import.');
+      stop();previewBar=0;state={...imported,loop:C.generateLoop(imported.params)};
+      syncInputs();renderEditor();renderLibrary();renderTimeline();persist('Import project');persistNow();
+      notice('Project imported. Undo restores the previous project.');
+    } catch(error){if(ticket===importTicket)notice(`Import failed: ${error.message} Your current project is unchanged.`,{error:true});}
+  });
+  ui.recoverBtn.addEventListener('click',()=>{
+    try {
+      const raw=store.readRaw();if(raw===null){notice('There is no saved data to download.');return;}
+      downloadBlob(new Blob([raw],{type:'application/json'}),'8bit_saved_data_recovery.json');
+      notice('Saved data downloaded unchanged. Autosave remains paused until you choose Keep this project.');
+    } catch(error){notice(`Recovery failed: ${error.message}`,{error:true});}
+  });
+  ui.resumeSaveBtn.addEventListener('click',()=>{
+    if(!window.confirm('Replace the browser saved project with this open project? Download Saved data first to keep the other version.'))return;
+    try {store.save(C.serializeProject(state),{force:true});storageAvailable=true;storageUI();notice('This project is now saved on this device.');}
+    catch(error){storageAvailable=false;storageUI();notice(error.message,{error:true});}
+  });
+  window.addEventListener('storage',event=>{
+    if((event.key===STORAGE_KEY||event.key===null)&&store.externalChange(event.key===null?null:event.newValue)){
+      storageUI();notice(store.reason,{error:true});
+    }
   });
   document.addEventListener('keydown',event=>{
-    if(event.defaultPrevented||event.repeat||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey)return;
+    if(event.defaultPrevented||event.repeat||event.altKey)return;
+    if((event.ctrlKey||event.metaKey)&&['z','y'].includes(event.key.toLowerCase())) {
+      // Text fields keep native editing undo; project history works elsewhere.
+      if(event.target.closest('input[type=text],input[type=search],input[type=number],textarea,[contenteditable]'))return;
+      event.preventDefault();travelHistory(event.key.toLowerCase()==='y'||event.shiftKey);return;
+    }
+    if(event.ctrlKey||event.metaKey||event.shiftKey)return;
     if(event.target.closest('input,select,textarea,button,summary,a,[contenteditable]'))return;
     if(event.code==='Space'){event.preventDefault();if(engine.playing||starting)stop();else play();}
     else if(event.key.toLowerCase()==='g'&&!ui.rerollBtn.disabled){event.preventDefault();ui.rerollBtn.click();}
@@ -368,8 +441,8 @@
   window.addEventListener('pagehide',()=>{if(saveTimer)persistNow();stop();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){if(saveTimer)persistNow();cancelFrame();}else if(engine.playing&&frameId===null)frameId=requestAnimationFrame(animate);});
   syncInputs();renderEditor();renderLibrary();renderTimeline();resizeCanvas();
-  if(!storageAvailable)ui.storageState.textContent='Autosave unavailable — use Project ↓';
+  updateHistory();storageUI();
   if(startupMessage)notice(startupMessage,{error:!storageAvailable});
   // Read-only diagnostics make regressions inspectable without exposing mutable state.
-  window.ChipApp=Object.freeze({snapshot:()=>JSON.parse(C.serializeProject(state)),diagnostics:()=>({...engine.diagnostics,animationActive:frameId!==null,exportBusy})});
+  window.ChipApp=Object.freeze({snapshot:()=>JSON.parse(C.serializeProject(state)),diagnostics:()=>({...engine.diagnostics,animationActive:frameId!==null,exportBusy,historyUndo:history.index,historyRedo:history.entries.length-history.index-1,autosaveBlocked:store.blocked})});
 })();

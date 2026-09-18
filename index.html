@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="styles.css">
   <script defer src="core.js"></script>
   <script defer src="audio.js"></script>
+  <script defer src="session.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
@@ -34,6 +35,7 @@
         <button id="rerollBtn" class="primary" title="New seed; keep every other setting (G)">↻ New pattern</button>
         <button id="randomBtn" title="Randomize musical settings and seed">Randomize</button>
       </div>
+      <label class="field preset-field" for="presetSelect"><span>Preset</span><select id="presetSelect"><option value="">Custom / current settings</option></select></label>
       <section class="setting-section" aria-labelledby="songHeading">
         <h3 id="songHeading">Song</h3>
         <div class="tonality field-grid">
@@ -65,7 +67,7 @@
           <label class="field" for="bitcrushRange"><span>Crunch <output id="bitcrushValue" for="bitcrushRange"></output></span><input id="bitcrushRange" type="range" min="0" max="0.95" step="0.01" value="0.35" title="Native waveshaping and low-pass filtering; no main-thread audio callbacks"></label>
         </div>
       </details>
-      <p class="settings-note">Changes apply automatically. Saving keeps a separate clip snapshot.</p>
+      <label class="field harmony-field" for="harmonyModeSelect"><span>Harmony</span><select id="harmonyModeSelect" title="Legacy keeps original seed output. Scale-locked uses only notes from the selected scale."><option value="legacy">Legacy chords</option><option value="scale">Scale-locked chords</option></select></label>
     </aside>
     <main id="workspace" class="workspace" tabindex="-1">
       <section class="panel overview" aria-labelledby="songTitle">
@@ -78,7 +80,7 @@
         <figure class="visualizer"><figcaption>Output spectrum <span id="audioStatus">Ready</span></figcaption><canvas id="viz" width="640" height="112" role="img" aria-label="Live audio spectrum; playback position is also shown in the transport"></canvas></figure>
       </section>
       <section class="panel sequencer" aria-labelledby="stepsHeading">
-        <div class="panel-head"><h2 id="stepsHeading">Pattern <span class="micro">16 steps / bar</span></h2><span class="position"><span id="currentBar">1 / 4</span> bars · <span id="currentStep">1 / 16</span> steps</span></div>
+        <div class="panel-head"><h2 id="stepsHeading">Pattern <span class="micro">16 steps / bar</span></h2><div class="bar-navigation" role="group" aria-label="Inspect pattern bars"><button id="prevBarBtn" class="small-button" aria-label="Previous bar">←</button><label class="sr-only" for="barSelect">Preview bar</label><select id="barSelect" title="Inspect any bar while stopped"></select><button id="nextBarBtn" class="small-button" aria-label="Next bar">→</button></div><span class="position"><span id="currentBar">1 / 4</span> bars · <span id="currentStep">1 / 16</span> steps</span></div>
         <div class="step-ruler" aria-hidden="true"><span>Tracks</span><div id="stepNumbers" class="steps"></div></div>
         <div class="track-row" data-track="lead"><label class="track-name"><input id="leadToggle" type="checkbox" checked>Lead</label><div id="leadSteps" class="steps" role="group" aria-label="Lead notes"></div></div>
         <div class="track-row" data-track="bass"><label class="track-name"><input id="bassToggle" type="checkbox" checked>Bass</label><div id="bassSteps" class="steps" role="group" aria-label="Bass notes"></div></div>
@@ -87,8 +89,9 @@
       </section>
       <div class="arrangement">
         <section class="panel library-panel" aria-labelledby="libraryHeading">
-          <div class="panel-head"><h2 id="libraryHeading">Loop library <span id="libraryCount" class="badge">0</span></h2><button id="exportLoopBtn" class="small-button" title="Export editor loop as WAV including its effect tail">Loop WAV ↓</button></div>
-          <div class="save-row"><label class="sr-only" for="loopNameInput">Loop name</label><input id="loopNameInput" type="text" maxlength="96" value="New Loop" placeholder="Name this loop"><button id="saveLoopBtn" class="primary">Save</button></div>
+          <div class="panel-head"><h2 id="libraryHeading">Loop library <span id="libraryCount" class="badge">0</span></h2><div class="inline-actions loop-export"><label class="sr-only" for="loopExportMode">Loop WAV length</label><select id="loopExportMode" title="With tail keeps the final release. Loop-length exports one musical cycle after effects pre-roll."><option value="tail">With tail</option><option value="loop">Loop-length</option></select><button id="exportLoopBtn" class="small-button" title="Export the editor loop in the selected WAV length">WAV ↓</button></div></div>
+          <div class="save-row"><label class="sr-only" for="loopNameInput">Loop name</label><input id="loopNameInput" type="text" maxlength="96" value="New Loop" placeholder="Name this loop"><button id="saveLoopBtn" class="primary" title="Save an independent snapshot; future editor changes leave it intact">Save</button></div>
+          <label class="sr-only" for="librarySearch">Filter saved loops by name, key, scale, tempo or seed</label><input id="librarySearch" type="search" maxlength="128" placeholder="Filter saved loops…" autocomplete="off">
           <div id="savedLoops" class="saved-loops"><p class="empty-state">Save a loop, then add it to your timeline.</p></div>
         </section>
         <section class="panel timeline-panel" aria-labelledby="timelineHeading">
@@ -98,10 +101,12 @@
         </section>
       </div>
       <footer class="project-bar">
+        <div class="inline-actions" role="group" aria-label="Project history"><button id="undoBtn" class="small-button" disabled>Undo</button><button id="redoBtn" class="small-button" disabled>Redo</button></div>
         <div class="inline-actions"><button id="backupBtn" class="small-button subtle">Project ↓</button><button id="importBtn" class="small-button subtle">Import</button><input id="importInput" type="file" accept="application/json,.json" hidden></div>
         <span id="storageState" class="micro">Local autosave</span><span class="shortcuts micro"><kbd>Space</kbd> play / stop · <kbd>G</kbd> new pattern</span>
       </footer>
-      <div class="notice" id="notice" role="status" aria-live="polite"><span id="noticeText">Ready. Generate, save, arrange.</span><button id="undoBtn" class="small-button" hidden>Undo</button></div>
+      <div id="recoveryActions" class="recovery-actions" hidden><span>Saved data is protected.</span><button id="recoverBtn" class="small-button">Saved data ↓</button><button id="resumeSaveBtn" class="small-button">Keep this project</button></div>
+      <div class="notice" id="notice" role="status" aria-live="polite"><span id="noticeText">Ready. Generate, save, arrange.</span></div>
     </main>
   </div>
   <noscript><p class="panel">Enable JavaScript to generate music. No external scripts or services are required.</p></noscript>
