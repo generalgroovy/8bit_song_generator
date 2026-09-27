@@ -541,7 +541,7 @@
           <button id="exportLoopBtn" class="warn" data-tooltip="Renders the current loop and downloads it as audio. This version exports WAV in-browser for reliability.">Export Loop</button>
           <button id="exportTimelineBtn" class="warn" data-tooltip="Renders the entire arranged timeline and downloads it as audio. This version exports WAV in-browser for reliability.">Export Timeline</button>
         </div>
-        <div class="footer-note">This implementation exports WAV in-browser. True MP3 export can be added later by wiring in an encoder like lamejs.</div>
+        <div class="footer-note">Exports WAV audio.</div>
       </div>
 
       <div class="section">
@@ -841,6 +841,7 @@
       savedLoops: [],
       timeline: [],
       activeTimelineClipIndex: 0,
+      transportVisual: null,
       draggedLoopId: null,
       draggedTimelineId: null
     };
@@ -1052,6 +1053,7 @@
     }
 
     function generateLoop() {
+      state.transportVisual = null;
       state.loop = generateLoopFromParams(state.params);
       refreshUI();
     }
@@ -1466,6 +1468,9 @@
       const totalSteps = getSequenceTotalSteps();
       if (!totalSteps) return;
       const { clip, clipIndex, localStep } = findClipAndLocalStep(Math.min(state.stepIndex, totalSteps - 1));
+      const previous = state.transportVisual;
+      if (previous && previous.loop === clip.loop && previous.clipIndex === clipIndex && previous.localStep === localStep) return;
+      state.transportVisual = { loop: clip.loop, clipIndex, localStep };
       state.activeTimelineClipIndex = clipIndex;
       state.currentBar = Math.floor(localStep / 16);
       state.currentStepInBar = localStep % 16;
@@ -1510,6 +1515,7 @@
     }
 
     function stopPlayback() {
+      state.transportVisual = null;
       state.isPlaying = false;
       if (state.intervalId) clearInterval(state.intervalId);
       state.intervalId = null;
