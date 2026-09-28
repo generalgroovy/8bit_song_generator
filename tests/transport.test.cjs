@@ -14,3 +14,37 @@ test('transport redraws only when the displayed step or loop changes',()=>{
   step=1;vm.runInContext('transportTick()',context);assert.equal(grids,2);
   clip.loop={};vm.runInContext('transportTick()',context);assert.equal(grids,3);
 });
+function integrated(){
+  let grids=0,stops=0;
+  const state={playMode:'loop',timeline:[],params:{bars:4},loop:{totalSteps:64},stepIndex:0};
+  const context=vm.createContext({state,clone:x=>JSON.parse(JSON.stringify(x)),ui:{loopNameInput:{value:'Test'},currentBar:{},currentStep:{}},renderStepGrids(){grids++;},renderTimeline(){},stopPlayback(){stops++;},refreshUI(){}});
+  vm.runInContext(html.slice(html.indexOf('    function getSequence()'),html.indexOf('    function scheduleTone(')),context);
+  vm.runInContext(html.slice(html.indexOf('    function transportTick()'),html.indexOf('    function startTransportLoop()')),context);
+  vm.runInContext(html.slice(html.indexOf('    function removeTimelineItem('),html.indexOf('    function moveTimelineItem(')),context);
+  return {state,context,run:code=>vm.runInContext(code,context),grids:()=>grids,stops:()=>stops};
+}
+test('actual sequence lookup preserves loop identity so unchanged playback redraws once',()=>{
+  const app=integrated();
+  for(let i=0;i<40;i++)app.run('transportTick()');
+  assert.equal(app.grids(),1);
+  app.state.stepIndex=1;app.run('transportTick()');assert.equal(app.grids(),2);
+});
+test('empty timeline never falls back to current loop, and last removal stops playback',()=>{
+  const app=integrated();app.state.playMode='timeline';
+  assert.equal(app.run('getSequenceTotalSteps()'),0);
+  app.state.timeline=[{id:'only',loop:{totalSteps:16}}];
+  app.run("removeTimelineItem('only')");assert.equal(app.stops(),1);assert.equal(app.run('getSequenceTotalSteps()'),0);
+});
+test('clear timeline stops its transport but preserves loop-mode playback',()=>{
+  const app=integrated();app.state.playMode='timeline';app.run('clearTimeline()');assert.equal(app.stops(),1);
+  app.state.playMode='loop';app.run('clearTimeline()');assert.equal(app.stops(),1);
+});
+test('library and timeline names are text, even when they contain HTML',()=>{
+  const rendered=[];const name='<img src=x onerror=alert(1)>';
+  const node=()=>{const label={};const element={dataset:{},querySelector:()=>label,querySelectorAll:()=>[{}, {}, {}],addEventListener(){}};rendered.push({element,label});return element;};
+  const clip={id:'one',name,params:{tempo:120,bars:1,key:'C',scale:'major',leadWave:'square',seed:1},loop:{totalSteps:16}};
+  const context=vm.createContext({state:{savedLoops:[clip],timeline:[clip]},ui:{savedLoops:{appendChild(){}},timelineItems:{appendChild(){}},timelineEmpty:{classList:{toggle(){}}}},document:{createElement:node},prettyScaleName:x=>x});
+  vm.runInContext(html.slice(html.indexOf('    function renderLibrary()'),html.indexOf('    ui.timelineDropzone.addEventListener')),context);
+  vm.runInContext('renderLibrary();renderTimeline()',context);
+  for(const {element,label} of rendered){assert.equal(label.textContent,name);assert.ok(!element.innerHTML.includes(name));}
+});

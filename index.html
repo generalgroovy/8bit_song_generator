@@ -541,7 +541,7 @@
           <button id="exportLoopBtn" class="warn" data-tooltip="Renders the current loop and downloads it as audio. This version exports WAV in-browser for reliability.">Export Loop</button>
           <button id="exportTimelineBtn" class="warn" data-tooltip="Renders the entire arranged timeline and downloads it as audio. This version exports WAV in-browser for reliability.">Export Timeline</button>
         </div>
-        <div class="footer-note">Exports WAV audio.</div>
+        <div class="footer-note">Clips stay in this tab only. Export WAV before closing.</div>
       </div>
 
       <div class="section">
@@ -1222,6 +1222,7 @@
 
     function removeTimelineItem(id) {
       state.timeline = state.timeline.filter(x => x.id !== id);
+      if (state.playMode === "timeline" && !state.timeline.length) stopPlayback();
       refreshUI();
     }
 
@@ -1251,7 +1252,7 @@
         card.innerHTML = `
           <div class="loop-top">
             <div>
-              <div class="loop-name">${loop.name}</div>
+              <div class="loop-name"></div>
               <div class="small">${loop.params.key} ${prettyScaleName(loop.params.scale)} · ${loop.params.tempo} BPM</div>
             </div>
             <div class="pill">${loop.params.bars} bars</div>
@@ -1266,6 +1267,7 @@
             <button class="ghost">Add</button>
           </div>
         `;
+        card.querySelector(".loop-name").textContent = loop.name;
         const [loadBtn, addBtn] = card.querySelectorAll("button");
         loadBtn.onclick = () => loadLoop(loop.id);
         addBtn.onclick = () => duplicateToTimeline(loop.id);
@@ -1287,18 +1289,19 @@
         item.dataset.tooltip = "This clip is part of the timeline arrangement. Drag it to reorder, or remove it to shorten the song.";
         item.innerHTML = `
           <div class="timeline-order">#${index + 1}</div>
-          <div class="loop-name">${clip.name}</div>
+          <div class="loop-name"></div>
           <div class="loop-meta">
             <span class="pill">${clip.params.key} ${prettyScaleName(clip.params.scale)}</span>
             <span class="pill">${clip.params.tempo} BPM</span>
             <span class="pill">${clip.params.bars} bars</span>
           </div>
           <div class="timeline-actions">
-            <button class="secondary">Edit</button>
+            <button class="secondary">Load copy</button>
             <button class="ghost">Copy</button>
             <button class="stop">Remove</button>
           </div>
         `;
+        item.querySelector(".loop-name").textContent = clip.name;
 
         const [editBtn, copyBtn, removeBtn] = item.querySelectorAll("button");
         editBtn.onclick = () => {
@@ -1341,18 +1344,24 @@
     });
 
     function getSequence() {
-      return state.playMode === "timeline" && state.timeline.length
+      return state.playMode === "timeline"
         ? state.timeline
         : [{
             id: "current",
             name: ui.loopNameInput.value.trim() || "Current Loop",
-            params: clone(state.params),
-            loop: clone(state.loop)
+            params: state.params,
+            loop: state.loop
           }];
     }
 
     function getSequenceTotalSteps() {
       return getSequence().reduce((s, c) => s + c.loop.totalSteps, 0);
+    }
+
+    function clearTimeline() {
+      if (state.playMode === "timeline") stopPlayback();
+      state.timeline = [];
+      refreshUI();
     }
 
     function findClipAndLocalStep(globalStep) {
@@ -1791,10 +1800,7 @@
       ui.saveLoopBtn.onclick = saveCurrentLoop;
       ui.exportLoopBtn.onclick = exportCurrentLoop;
       ui.exportTimelineBtn.onclick = exportTimeline;
-      ui.clearTimelineBtn.onclick = () => {
-        state.timeline = [];
-        refreshUI();
-      };
+      ui.clearTimelineBtn.onclick = clearTimeline;
     }
 
     bindEvents();
