@@ -7,7 +7,7 @@
 1. Set key, scale, tempo, bars and seed. Adjust melody, sound and track controls. **New Pattern** changes the seed; **Randomize** changes the musical settings too.
 2. Use **Play** and **Stop** in **Loop Mode** to audition the current pattern.
 3. Enter a loop name and choose **Save Loop** to keep a snapshot in the current tab's clip library.
-4. Choose **Add** on a saved clip, or drag it onto the timeline. Drag timeline clips to reorder; **Copy** duplicates a clip and **Remove** removes it.
+4. Choose **Add** on a saved clip, or drag it onto the timeline. Use each clip’s **↑ / ↓** buttons or drag timeline clips to reorder; **Copy** duplicates a clip and **Remove** removes it.
 5. Select **Timeline Mode** and **Play**. The arrangement repeats. Removing its final clip or clearing the timeline stops that transport; it does not silently play the editor loop.
 6. **Export Loop** or **Export Timeline** downloads a mono 44.1 kHz, 16-bit PCM WAV file.
 
@@ -29,6 +29,6 @@ With Node.js 18 or newer:
 node --test tests/transport.test.cjs
 ```
 
-The suite exercises the actual sequence lookup and transport redraw path, empty-timeline behavior and literal clip-name rendering. Audio scheduling reads the current loop directly rather than repeatedly cloning its arrays; unchanged visible steps do not rebuild the grids.
+The suite exercises the actual sequence lookup and transport redraw path, empty-timeline behavior, keyboard/touch reorder focus and literal clip-name rendering. Audio scheduling reads the current loop directly rather than repeatedly cloning its arrays; unchanged visible steps do not rebuild the grids.
 
 A browser acceptance pass should generate and play a loop, save/add/reorder clips, remove the final clip during timeline playback, and inspect/listen to an exported WAV. Automated tests do not establish listening quality, timing under every device load, or musical suitability.

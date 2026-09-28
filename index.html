@@ -397,6 +397,8 @@
       align-items: stretch;
     }
 
+    .timeline-actions button:first-child { grid-column: 1 / -1; }
+
     .timeline-order {
       position: absolute;
       top: 10px;
@@ -490,12 +492,12 @@
       .save-row,
       .export-row,
       .toggles,
-      .timeline-actions,
       .loop-actions,
       .status-grid {
         grid-template-columns: 1fr;
       }
       .steps { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+      .timeline-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .timeline-items { flex-direction: column; }
     }
   </style>
@@ -731,12 +733,12 @@
         <div class="panel-head">
           <div>
             <div class="label">Timeline Arranger</div>
-            <div class="small">Drag saved loops here to build a song. Drag clips left or right to reorder them.</div>
+            <div class="small">Add saved loops to build a song. Reorder clips with the arrows or drag.</div>
           </div>
           <div class="pill" id="timelineDuration">0.0s total</div>
         </div>
-        <div id="timelineDropzone" class="timeline-dropzone" data-tooltip="Drop saved loops here to create an arrangement. Timeline playback follows this order from left to right.">
-          <div id="timelineEmpty" class="small">Drop a saved loop here to add it to the timeline.</div>
+        <div id="timelineDropzone" class="timeline-dropzone" data-tooltip="Add or drop saved loops here. Reorder clips with their arrows or drag; playback follows the numbered order.">
+          <div id="timelineEmpty" class="small">Use Add on a saved loop, or drop one here.</div>
           <div id="timelineItems" class="timeline-items"></div>
         </div>
       </section>
@@ -1235,6 +1237,17 @@
       refreshUI();
     }
 
+    function moveTimelineBy(id, direction) {
+      const index = state.timeline.findIndex(clip => clip.id === id);
+      const target = state.timeline[index + direction];
+      if (index < 0 || !target) return;
+      moveTimelineItem(id, target.id);
+      const item = ui.timelineItems.querySelector(`[data-timeline-id="${id}"]`);
+      const preferred = item?.querySelector(`[data-move="${direction}"]`);
+      const fallback = item?.querySelector(`[data-move="${-direction}"]`);
+      (preferred && !preferred.disabled ? preferred : fallback)?.focus({preventScroll:true});
+    }
+
     function renderLibrary() {
       ui.savedLoops.innerHTML = "";
       if (!state.savedLoops.length) {
@@ -1286,7 +1299,7 @@
         item.className = "timeline-item" + (state.isPlaying && state.playMode === "timeline" && index === state.activeTimelineClipIndex ? " playing" : "");
         item.draggable = true;
         item.dataset.timelineId = clip.id;
-        item.dataset.tooltip = "This clip is part of the timeline arrangement. Drag it to reorder, or remove it to shorten the song.";
+        item.dataset.tooltip = "Reorder this clip with its arrows or drag. Remove it to shorten the song.";
         item.innerHTML = `
           <div class="timeline-order">#${index + 1}</div>
           <div class="loop-name"></div>
@@ -1299,11 +1312,17 @@
             <button class="secondary">Load copy</button>
             <button class="ghost">Copy</button>
             <button class="stop">Remove</button>
+            <button class="ghost" data-move="-1" aria-label="Move clip earlier">↑</button>
+            <button class="ghost" data-move="1" aria-label="Move clip later">↓</button>
           </div>
         `;
         item.querySelector(".loop-name").textContent = clip.name;
 
-        const [editBtn, copyBtn, removeBtn] = item.querySelectorAll("button");
+        const [editBtn, copyBtn, removeBtn, earlierBtn, laterBtn] = item.querySelectorAll("button");
+        earlierBtn.disabled = index === 0;
+        laterBtn.disabled = index === state.timeline.length - 1;
+        earlierBtn.onclick = () => moveTimelineBy(clip.id, -1);
+        laterBtn.onclick = () => moveTimelineBy(clip.id, 1);
         editBtn.onclick = () => {
           state.params = clone(clip.params);
           state.loop = clone(clip.loop);
