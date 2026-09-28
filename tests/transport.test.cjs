@@ -17,7 +17,7 @@ test('transport redraws only when the displayed step or loop changes',()=>{
 function integrated(){
   let grids=0,stops=0;
   const state={playMode:'loop',timeline:[],params:{bars:4},loop:{totalSteps:64},stepIndex:0};
-  const context=vm.createContext({state,clone:x=>JSON.parse(JSON.stringify(x)),ui:{loopNameInput:{value:'Test'},currentBar:{},currentStep:{}},renderStepGrids(){grids++;},renderTimeline(){},stopPlayback(){stops++;},refreshUI(){}});
+  const context=vm.createContext({state,rememberProject(){},clone:x=>JSON.parse(JSON.stringify(x)),ui:{loopNameInput:{value:'Test'},currentBar:{},currentStep:{}},renderStepGrids(){grids++;},renderTimeline(){},stopPlayback(){stops++;},refreshUI(){}});
   vm.runInContext(html.slice(html.indexOf('    function getSequence()'),html.indexOf('    function scheduleTone(')),context);
   vm.runInContext(html.slice(html.indexOf('    function transportTick()'),html.indexOf('    function startTransportLoop()')),context);
   vm.runInContext(html.slice(html.indexOf('    function removeTimelineItem('),html.indexOf('    function moveTimelineItem(')),context);
@@ -53,7 +53,7 @@ test('library and timeline names are text, even when they contain HTML',()=>{
 test('timeline arrow actions reorder clips and keep focus on an available move control',()=>{
   let focus=0,refreshes=0;
   const state={timeline:[{id:'a'},{id:'b'},{id:'c'}]};
-  const context=vm.createContext({state,refreshUI(){refreshes++;},ui:{timelineItems:{querySelector(){return {querySelector(selector){return {disabled:selector==='[data-move="-1"]',focus(){focus++;}};}};}}}});
+  const context=vm.createContext({state,rememberProject(){},refreshUI(){refreshes++;},ui:{timelineItems:{querySelector(){return {querySelector(selector){return {disabled:selector==='[data-move="-1"]',focus(){focus++;}};}};}}}});
   vm.runInContext(html.slice(html.indexOf('    function moveTimelineItem('),html.indexOf('    function renderLibrary(')),context);
   vm.runInContext("moveTimelineBy('b',-1)",context);
   assert.deepEqual(state.timeline.map(x=>x.id),['b','a','c']);

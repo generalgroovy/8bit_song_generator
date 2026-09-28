@@ -506,7 +506,7 @@
   <div class="app">
     <aside class="panel controls">
       <h1>8-Bit Loop Generator</h1>
-      <div class="sub">Generate chiptune loops, save them to a clip library, arrange them on a timeline, and export performances.</div>
+
 
       <div class="toolbar">
         <button id="playBtn" data-tooltip="Starts playback. In Loop mode it repeats the current loop. In Timeline mode it plays the arranged clips in order.">▶ Play</button>
@@ -533,7 +533,7 @@
         <h2>Save & Export</h2>
         <div class="field">
           <label for="loopNameInput">Loop Name</label>
-          <input id="loopNameInput" type="text" value="New Loop" placeholder="Give this loop a name" data-tooltip="Name used when saving the current loop into the clip library.">
+          <input id="loopNameInput" maxlength="120" type="text" value="New Loop" placeholder="Give this loop a name" data-tooltip="Name used when saving the current loop into the clip library.">
         </div>
         <div class="save-row">
           <button id="saveLoopBtn" class="secondary" data-tooltip="Saves the current pattern and all sound settings as a reusable loop clip in the library below.">💾 Save Loop</button>
@@ -543,7 +543,21 @@
           <button id="exportLoopBtn" class="warn" data-tooltip="Renders the current loop and downloads it as audio. This version exports WAV in-browser for reliability.">Export Loop</button>
           <button id="exportTimelineBtn" class="warn" data-tooltip="Renders the entire arranged timeline and downloads it as audio. This version exports WAV in-browser for reliability.">Export Timeline</button>
         </div>
-        <div class="footer-note">Clips stay in this tab only. Export WAV before closing.</div>
+        <div class="save-row project-actions" style="margin-top:10px">
+          <button id="saveProjectBtn" class="secondary">Save project</button>
+          <button id="importProjectBtn" class="ghost">Open project</button>
+          <input id="projectFile" type="file" accept=".json,application/json" hidden>
+          <button id="undoProjectBtn" class="ghost" disabled>Undo</button>
+          <button id="redoProjectBtn" class="ghost" disabled>Redo</button>
+        </div>
+        <p id="projectStatus" class="small" role="status" aria-live="polite"></p>
+        <button id="keepProjectBtn" class="ghost" hidden>Keep this project</button>
+        <details class="project-info"><summary>Info</summary>
+          <p>Compose a loop, Save Loop, then Add clips to the arrangement. Load opens an independent editor copy. Use arrows or drag to reorder.</p>
+          <p>Undo/Redo restores library and arrangement actions, loop loads, New Pattern, Randomize and project imports. Playback stops when restoring. Keyboard: Ctrl/Command+Z; Shift+Z to redo outside text fields.</p>
+          <p>This browser autosaves the complete project. Save project downloads an editable JSON backup with the editor, sounds, actual notes, library and arrangement. Open project replaces the workspace; Undo restores it. Browser storage can be cleared, so keep a downloaded backup for important work.</p>
+          <p>WAV is a separate offline render, not a live recording: echo/crunch and exact percussion timbre differ. Exports are limited to ten minutes per file. Blue marks the current sixteenth note; green marks active notes. The transport follows each bar.</p>
+        </details>
       </div>
 
       <div class="section">
@@ -692,7 +706,7 @@
         <div class="card visualizer-wrap">
           <div class="label">Output Visualizer</div>
           <canvas id="viz" width="720" height="180"></canvas>
-          <div class="small">Blue cursor = current step. Green cells = active notes in the current 16-step view.</div>
+
         </div>
       </section>
 
@@ -700,12 +714,12 @@
         <div class="panel status-card">
           <div class="label">Current Bar</div>
           <div class="big" id="currentBar">1 / 4</div>
-          <div class="small">The loop is quantized into 16th notes with a 4/4 feel.</div>
+
         </div>
         <div class="panel status-card">
           <div class="label">Step</div>
           <div class="big" id="currentStep">1 / 16</div>
-          <div class="small">Step view follows the active bar while the transport runs.</div>
+
         </div>
         <div class="panel status-card">
           <div class="label">Mood</div>
@@ -715,7 +729,7 @@
         <div class="panel status-card">
           <div class="label">Timeline Clips</div>
           <div class="big" id="timelineCount">0</div>
-          <div class="small">Saved clips can be dragged from the library onto the timeline.</div>
+
         </div>
       </section>
 
@@ -723,7 +737,7 @@
         <div class="panel-head">
           <div>
             <div class="label">Saved Loop Library</div>
-            <div class="small">Save loop snapshots here, then drag them into the timeline arranger.</div>
+
           </div>
         </div>
         <div id="savedLoops" class="saved-loops"></div>
@@ -733,7 +747,7 @@
         <div class="panel-head">
           <div>
             <div class="label">Timeline Arranger</div>
-            <div class="small">Add saved loops to build a song. Reorder clips with the arrows or drag.</div>
+
           </div>
           <div class="pill" id="timelineDuration">0.0s total</div>
         </div>
@@ -762,6 +776,7 @@
 
   <div id="tooltip" class="tooltip"></div>
 
+  <script src="project-state.js"></script>
   <script>
     const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     const SCALES = {
@@ -850,6 +865,63 @@
 
     const clone = x => JSON.parse(JSON.stringify(x));
     const uid = p => `${p}_${Math.random().toString(36).slice(2, 10)}`;
+    const projectHistory = new MusicProject.History();
+    const PROJECT_STORE = '8bit-music.current.v1', PROJECT_BACKUP = '8bit-music.backup.v1';
+    let saveTimer = null, autosaveAllowed = true, lastSaved = '', playRequest = 0, importRequest = 0;
+    function projectStatus(message, error = false) {
+      ui.projectStatus.textContent = message;
+      ui.projectStatus.setAttribute('role', error ? 'alert' : 'status');
+    }
+    function captureProject() {
+      return { format: '8bit-music', version: 1, name: ui.loopNameInput.value,
+        playMode: state.playMode, params: clone(state.params), loop: clone(state.loop),
+        savedLoops: clone(state.savedLoops), timeline: clone(state.timeline) };
+    }
+    function rememberProject() { if (state.loop) projectHistory.remember(captureProject()); }
+    function applyProject(project) {
+      stopPlayback();
+      state.params = clone(project.params); state.loop = clone(project.loop);
+      state.savedLoops = clone(project.savedLoops); state.timeline = clone(project.timeline);
+      state.playMode = project.playMode; ui.loopNameInput.value = project.name;
+      state.draggedLoopId = null; state.draggedTimelineId = null;
+      syncInputs(); if (state.audio) updateFx();
+    }
+    function restoreHistory(redo = false) {
+      const saved = projectHistory.move(captureProject(), redo);
+      if (!saved) return;
+      applyProject(saved); refreshUI(); projectStatus(redo ? 'Redone.' : 'Undone.');
+    }
+    function flushProject() {
+      clearTimeout(saveTimer);
+      if (!autosaveAllowed || !state.loop) return;
+      try {
+        const text = JSON.stringify(MusicProject.validate(captureProject(), Object.keys(SCALES)));
+        if (text === lastSaved) return;
+        const previous = localStorage.getItem(PROJECT_STORE);
+        if (previous) { try { MusicProject.parse(previous,Object.keys(SCALES)); localStorage.setItem(PROJECT_BACKUP,previous); } catch {} }
+        localStorage.setItem(PROJECT_STORE, text); lastSaved = text;
+        projectStatus('Saved in this browser.');
+      } catch (error) { projectStatus('Autosave unavailable. Save project to keep a JSON backup. ' + error.message, true); }
+    }
+    function scheduleProjectSave() {
+      ui.undoProjectBtn.disabled = !projectHistory.past.length;
+      ui.redoProjectBtn.disabled = !projectHistory.future.length;
+      clearTimeout(saveTimer); saveTimer = setTimeout(flushProject, 400);
+    }
+    function loadAutosave() {
+      try {
+        const raw = localStorage.getItem(PROJECT_STORE);
+        if (!raw) return;
+        const saved = MusicProject.parse(raw, Object.keys(SCALES));
+        applyProject(saved); lastSaved = JSON.stringify(saved);
+        projectStatus('Restored from this browser.');
+      } catch (error) {
+        autosaveAllowed = false; ui.keepProjectBtn.hidden = false;
+        let recovered = false;
+        try { const raw = localStorage.getItem(PROJECT_BACKUP); if (raw) { applyProject(MusicProject.parse(raw,Object.keys(SCALES))); recovered = true; } } catch {}
+        projectStatus((recovered ? 'Recovered the previous draft.' : 'Could not open the saved draft.') + ' Original storage is preserved. Save project for a backup, then choose Keep this project to resume autosave.', true);
+      }
+    }
     const midiToFreq = m => 440 * Math.pow(2, (m - 69) / 12);
 
     function mulberry32(seed) {
@@ -1073,7 +1145,7 @@
         arpBias: +ui.arpRange.value,
         echo: +ui.echoRange.value,
         crunch: +ui.bitcrushRange.value,
-        seed: Math.max(1, +ui.seedInput.value || 1),
+        seed: Math.min(999999, Math.max(1, Math.round(+ui.seedInput.value || 1))),
         leadWave: ui.leadWaveSelect.value,
         bassWave: ui.bassWaveSelect.value,
         leadOn: ui.leadToggle.checked,
@@ -1167,9 +1239,11 @@
       renderStepGrids(state.loop);
       renderLibrary();
       renderTimeline();
+      scheduleProjectSave();
     }
 
     function randomizeSettings() {
+      rememberProject();
       const rng = mulberry32(Date.now() % 1000000);
       Object.assign(state.params, {
         key: pick(rng, NOTES),
@@ -1197,6 +1271,8 @@
     }
 
     function saveCurrentLoop() {
+      if (state.savedLoops.length >= MusicProject.MAX_CLIPS) { projectStatus('The library holds 64 clips. Remove an unused clip first.', true); return; }
+      rememberProject();
       readInputs();
       const name = ui.loopNameInput.value.trim() || `Loop ${state.savedLoops.length + 1}`;
       const loop = generateLoopFromParams(state.params);
@@ -1208,21 +1284,27 @@
     function loadLoop(id) {
       const item = state.savedLoops.find(x => x.id === id);
       if (!item) return;
+      rememberProject();
       state.params = clone(item.params);
       state.loop = clone(item.loop);
       ui.loopNameInput.value = item.name;
       stopPlayback();
       syncInputs();
+      refreshUI();
     }
 
     function duplicateToTimeline(id) {
       const item = state.savedLoops.find(x => x.id === id);
       if (!item) return;
+      if (state.timeline.length >= MusicProject.MAX_CLIPS) { projectStatus('The timeline holds 64 clips. Remove a clip first.', true); return; }
+      rememberProject();
       state.timeline.push({ ...clone(item), id: uid("clip") });
       refreshUI();
     }
 
     function removeTimelineItem(id) {
+      if (!state.timeline.some(clip => clip.id === id)) return;
+      rememberProject();
       state.timeline = state.timeline.filter(x => x.id !== id);
       if (state.playMode === "timeline" && !state.timeline.length) stopPlayback();
       refreshUI();
@@ -1232,6 +1314,7 @@
       const from = state.timeline.findIndex(x => x.id === fromId);
       const to = state.timeline.findIndex(x => x.id === toId);
       if (from < 0 || to < 0 || from === to) return;
+      rememberProject();
       const [moved] = state.timeline.splice(from, 1);
       state.timeline.splice(to, 0, moved);
       refreshUI();
@@ -1278,12 +1361,14 @@
           <div class="loop-actions">
             <button class="secondary">Load</button>
             <button class="ghost">Add</button>
+            <button class="stop">Remove</button>
           </div>
         `;
         card.querySelector(".loop-name").textContent = loop.name;
-        const [loadBtn, addBtn] = card.querySelectorAll("button");
+        const [loadBtn, addBtn, deleteBtn] = card.querySelectorAll("button");
         loadBtn.onclick = () => loadLoop(loop.id);
         addBtn.onclick = () => duplicateToTimeline(loop.id);
+        deleteBtn.onclick = () => { rememberProject(); state.savedLoops = state.savedLoops.filter(item => item.id !== loop.id); refreshUI(); projectStatus('Removed from the library. Timeline copies are unchanged.'); ui.undoProjectBtn.focus(); };
         card.addEventListener("dragstart", () => { state.draggedLoopId = loop.id; });
         card.addEventListener("dragend", () => { state.draggedLoopId = null; });
         ui.savedLoops.appendChild(card);
@@ -1324,14 +1409,18 @@
         earlierBtn.onclick = () => moveTimelineBy(clip.id, -1);
         laterBtn.onclick = () => moveTimelineBy(clip.id, 1);
         editBtn.onclick = () => {
+          rememberProject();
           state.params = clone(clip.params);
           state.loop = clone(clip.loop);
           ui.loopNameInput.value = clip.name;
           state.playMode = "loop";
           stopPlayback();
           syncInputs();
+          refreshUI();
         };
         copyBtn.onclick = () => {
+          if (state.timeline.length >= MusicProject.MAX_CLIPS) { projectStatus('The timeline holds 64 clips. Remove a clip first.', true); return; }
+          rememberProject();
           state.timeline.splice(index + 1, 0, { ...clone(clip), id: uid("clip") });
           refreshUI();
         };
@@ -1378,6 +1467,7 @@
     }
 
     function clearTimeline() {
+      if (state.timeline.length) rememberProject();
       if (state.playMode === "timeline") stopPlayback();
       state.timeline = [];
       refreshUI();
@@ -1517,6 +1607,7 @@
     }
 
     async function startPlayback() {
+      const request = ++playRequest;
       initAudio();
       readInputs();
 
@@ -1529,6 +1620,7 @@
         await state.audio.ctx.resume();
       }
 
+      if (request !== playRequest) return;
       if (!state.loop) generateLoop();
       if (state.isPlaying) return;
 
@@ -1543,6 +1635,7 @@
     }
 
     function stopPlayback() {
+      playRequest++;
       state.transportVisual = null;
       state.isPlaying = false;
       if (state.intervalId) clearInterval(state.intervalId);
@@ -1648,6 +1741,8 @@
     }
 
     function renderSequenceOffline(sequence) {
+      const duration = sequence.reduce((sum, clip) => sum + clip.loop.totalSteps * 60 / clip.params.tempo / 4, 0);
+      if (duration > 600) throw Error('WAV export is limited to ten minutes. Save the project, then export a shorter arrangement.');
       const sampleRate = 44100;
       const totalSeconds = Math.max(0.1, sequence.reduce((s, c) => s + c.loop.totalSteps * (60 / c.params.tempo / 4), 0) + 0.6);
       const totalSamples = Math.ceil(totalSeconds * sampleRate);
@@ -1811,21 +1906,54 @@
       ui.stopBtn.onclick = stopPlayback;
       ui.randomBtn.onclick = randomizeSettings;
       ui.rerollBtn.onclick = () => {
+        rememberProject();
         readInputs();
         state.params.seed = Math.floor(Math.random() * 999999) + 1;
         ui.seedInput.value = state.params.seed;
         generateLoop();
       };
       ui.saveLoopBtn.onclick = saveCurrentLoop;
-      ui.exportLoopBtn.onclick = exportCurrentLoop;
-      ui.exportTimelineBtn.onclick = exportTimeline;
+      ui.exportLoopBtn.onclick = () => { try { exportCurrentLoop(); } catch (error) { projectStatus(error.message, true); } };
+      ui.exportTimelineBtn.onclick = () => { try { exportTimeline(); } catch (error) { projectStatus(error.message, true); } };
       ui.clearTimelineBtn.onclick = clearTimeline;
+      ui.undoProjectBtn.onclick = () => restoreHistory();
+      ui.redoProjectBtn.onclick = () => restoreHistory(true);
+      ui.saveProjectBtn.onclick = () => {
+        try {
+          const saved = MusicProject.validate(captureProject(), Object.keys(SCALES));
+          downloadBlob(new Blob([JSON.stringify(saved,null,2)], {type:'application/json'}), '8bit-music-project.json');
+          projectStatus('Project JSON downloaded.');
+        } catch (error) { projectStatus(error.message, true); }
+      };
+      ui.importProjectBtn.onclick = () => ui.projectFile.click();
+      ui.projectFile.onchange = async () => {
+        const file = ui.projectFile.files[0]; ui.projectFile.value = ''; if (!file) return;
+        const request = ++importRequest, before = JSON.stringify(captureProject());
+        try {
+          if (file.size > MusicProject.MAX_BYTES) throw Error('Project file exceeds 5 MB.');
+          const text = await file.text();
+          if (request !== importRequest) return;
+          const saved = MusicProject.parse(text, Object.keys(SCALES));
+          if (JSON.stringify(captureProject()) !== before) throw Error('The workspace changed while reading the file. Open the backup again when ready.');
+          rememberProject(); applyProject(saved); refreshUI();
+          projectStatus('Project opened. Undo restores your previous workspace.');
+        } catch (error) { if (request === importRequest) projectStatus(error.message + ' Your project is unchanged.', true); }
+      };
+      ui.keepProjectBtn.onclick = () => { autosaveAllowed = true; ui.keepProjectBtn.hidden = true; lastSaved = ''; flushProject(); };
+      ui.loopNameInput.addEventListener('input', scheduleProjectSave);
+      document.addEventListener('keydown', e => {
+        if (e.defaultPrevented || e.altKey || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.target.closest('input,textarea,select,[contenteditable]')) return;
+        e.preventDefault(); restoreHistory(e.shiftKey);
+      });
+      window.addEventListener('pagehide', flushProject);
     }
 
     bindEvents();
     bindTooltips();
     syncInputs();
     generateLoop();
+    loadAutosave();
+    refreshUI();
   </script>
 </body>
 </html>
