@@ -1,4 +1,4 @@
-# 8-Bit Music quality slice â€” 6 October 2026
+# 8-Bit Music quality slice - 6 October 2026
 
 Baseline: `13e38a3`, matching fetched `origin/main`. Dedicated candidate branch: `codex/8bit-intentional-variations`.
 
@@ -22,4 +22,19 @@ The implementation adds single-layer/bar variations, independent actual-note sav
 
 Self-review corrected hidden error/recovery feedback after introducing Save & Export disclosure, clarified muted/timeline variation feedback, preserved imported custom progressions and limited harmony inversions to valid MIDI pitches.
 
-Candidate CI/browser verification is pending. No publication claimed. Human listening and physical-device timing are separate from automated verification.
+Candidate CI at `b4f54c7` passed all 21 Node tests and full browser workflows at 1440, 390 and 320 px: selected-layer/bar protection; sound/mode preservation; variation Undo/Redo; quick Stop/Play and fresh echo buffer; exact-note clip save; arrangement/library independence; project download/import/invalid import; autosave/reload and damaged-save recovery. All three widths have no horizontal page overflow and no page errors. [Passing CI](https://github.com/generalgroovy/8bit_song_generator/actions/runs/37534743745).
+
+First CI passed 1440 px, then exposed a test race at 390 px: an immediate AudioParam read preceded the next audio render quantum. The regression now waits up to one second for the stopped gain while still requiring cleared sources, stopped transport and a fresh echo buffer. Local CI screenshots were inspected at desktop and narrow phone widths; native disclosures and controls render without clipping.
+
+Manual CUA was not run for this candidate: the isolated CI browser already exercised the same interaction paths and all three screen widths, so no duplicate browser pass was needed. Rendered screenshots were inspected locally. No publication claimed. Human listening and physical-device timing are separate from automated verification.
+
+
+## Release handoff
+
+- Reviewed application revision: `f707f08d68661877ba9cae9e9cfb5faa56e7f93d`.
+- Passing browser regression revision: `b4f54c7` (test-only correction after the application commit).
+- Runtime files: `index.html`, `project-state.js`, **`pattern-tools.js`**. Include the new module when updating embedded copies.
+- No dependencies are needed in production. The pinned Playwright dependency is installed only by CI.
+- [Browser report](docs/evidence/browser-quality-2026-10-06.json) and [desktop screenshot](docs/evidence/browser-quality-2026-10-06.png).
+- Parent owns main/release/portfolio publication. This agent pushed only the candidate branch.
+- Deferred acceptance: listening quality, physical phone audio/timing, and independent novice usability observation. Existing offline-WAV/live-effects differences remain explicitly documented.
