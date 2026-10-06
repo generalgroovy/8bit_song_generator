@@ -2,6 +2,14 @@
 
 [Open 8-Bit Music](https://generalgroovy.github.io/8bit_song_generator/). Generate seeded chiptune patterns, audition four musical layers, arrange clips, and export WAV audio in the browser.
 
+## Engineering overview
+
+- **Composition:** seeded generation produces four musical layers, with separate editor, clip-library and arrangement state.
+- **Audio:** live Web Audio playback and a separate offline synthesizer support auditioning and WAV export; their sound differences are documented below.
+- **Project integrity:** portable JSON validates settings, notes and identities before import, with bounded history and recovery from damaged browser saves.
+
+[Project overview](https://generalgroovy.web.app/apps/8-bit-loop-generator/) · [Project-state implementation](project-state.js) · [Tests](tests/)
+
 ## Core workflow
 
 1. Set key, scale, tempo, bars and seed. Adjust melody, sound and track controls. **New Pattern** changes the seed; **Randomize** changes the musical settings too.
