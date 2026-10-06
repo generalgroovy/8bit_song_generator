@@ -41,6 +41,8 @@ try {
     await page.locator('#playBtn').click();await page.waitForFunction(()=>state.isPlaying);
     await page.locator('#stopBtn').click();
     await delay.dispose();
+    // AudioParam values reflect the next audio render quantum, not the DOM event turn.
+    await page.waitForFunction(()=>state.audio.master.gain.value===0,{},{timeout:1000});
     assert.deepEqual(await page.evaluate(()=>({playing:state.isPlaying,sources:state.audio.sources.size,output:state.audio.master.gain.value})),{playing:false,sources:0,output:0});
     await page.locator('#savePanel > summary').click();
     await page.getByRole('textbox',{name:'Loop Name',exact:true}).fill('Verse');
