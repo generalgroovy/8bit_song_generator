@@ -500,6 +500,13 @@
       .timeline-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .timeline-items { flex-direction: column; }
     }
+    details.section > summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
+    details.section[open] > summary { margin-bottom: 12px; }
+    :focus-visible { outline: 3px solid var(--accent-2); outline-offset: 3px; }
+    button:disabled { opacity: .45; cursor: default; transform: none; }
+    .variation-actions { display: grid; gap: 10px; margin-top: 10px; }
+    .variation-actions .small { margin: 0; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   </style>
 </head>
 <body>
@@ -515,6 +522,14 @@
         <button id="rerollBtn" class="ghost" data-tooltip="Keeps the current parameter settings but generates a fresh pattern using a new seed.">↻ New Pattern</button>
       </div>
 
+      <div class="save-row" style="margin-top:10px">
+          <button id="undoProjectBtn" class="ghost" disabled>Undo</button>
+          <button id="redoProjectBtn" class="ghost" disabled>Redo</button>
+      </div>
+
+        <p id="projectStatus" class="small" role="status" aria-live="polite"></p>
+        <button id="keepProjectBtn" class="ghost" hidden>Keep this project</button>
+
       <div class="section">
         <h2>Mode</h2>
         <div class="mode-row">
@@ -529,8 +544,8 @@
         </div>
       </div>
 
-      <div class="section">
-        <h2>Save & Export</h2>
+      <details class="section" id="savePanel">
+        <summary>Save & Export</summary>
         <div class="field">
           <label for="loopNameInput">Loop Name</label>
           <input id="loopNameInput" maxlength="120" type="text" value="New Loop" placeholder="Give this loop a name" data-tooltip="Name used when saving the current loop into the clip library.">
@@ -547,18 +562,16 @@
           <button id="saveProjectBtn" class="secondary">Save project</button>
           <button id="importProjectBtn" class="ghost">Open project</button>
           <input id="projectFile" type="file" accept=".json,application/json" hidden>
-          <button id="undoProjectBtn" class="ghost" disabled>Undo</button>
-          <button id="redoProjectBtn" class="ghost" disabled>Redo</button>
+
         </div>
-        <p id="projectStatus" class="small" role="status" aria-live="polite"></p>
-        <button id="keepProjectBtn" class="ghost" hidden>Keep this project</button>
+
         <details class="project-info"><summary>Info</summary>
           <p>Compose a loop, Save Loop, then Add clips to the arrangement. Load opens an independent editor copy. Use arrows or drag to reorder.</p>
-          <p>Undo/Redo restores library and arrangement actions, loop loads, New Pattern, Randomize and project imports. Playback stops when restoring. Keyboard: Ctrl/Command+Z; Shift+Z to redo outside text fields.</p>
+          <p>Undo/Redo restores library and arrangement actions, loop loads, layer variations, melody changes, New Pattern, Randomize and project imports. Playback stops when restoring. Shape one layer changes only the chosen layer and bar, preserving the chord progression and other layers. A little / Half / All replaces that fraction of the differing steps. The starting seed recreates the original full pattern; save a project to preserve variations. Keyboard: Ctrl/Command+Z; Shift+Z to redo outside text fields.</p>
           <p>This browser autosaves the complete project. Save project downloads an editable JSON backup with the editor, sounds, actual notes, library and arrangement. Open project replaces the workspace; Undo restores it. Browser storage can be cleared, so keep a downloaded backup for important work.</p>
           <p>WAV is a separate offline render, not a live recording: echo/crunch and exact percussion timbre differ. Exports are limited to ten minutes per file. Blue marks the current sixteenth note; green marks active notes. The transport follows each bar.</p>
         </details>
-      </div>
+      </details>
 
       <div class="section">
         <h2>Song</h2>
@@ -617,13 +630,30 @@
           </div>
           <div class="field">
             <label for="seedInput">Seed</label>
-            <input id="seedInput" type="number" min="1" max="999999" step="1" value="4312" data-tooltip="A repeatable random seed. Reusing the same seed and settings recreates the same loop pattern.">
+            <input id="seedInput" type="number" min="1" max="999999" step="1" value="4312" data-tooltip="Starting seed for a full pattern. Layer variations are kept as actual notes in project backups and saved clips.">
           </div>
         </div>
       </div>
 
-      <div class="section">
-        <h2>Melody</h2>
+      <details class="section" id="variationPanel">
+        <summary>Shape one layer</summary>
+        <div class="field-grid">
+          <div class="field"><label for="variationTrack">Layer</label><select id="variationTrack">
+            <option value="lead">Lead</option><option value="bass">Bass</option><option value="drums">Drums</option><option value="harmony">Harmony</option>
+          </select></div>
+          <div class="field"><label for="variationBar">Part</label><select id="variationBar"><option value="-1">Whole loop</option></select></div>
+          <div class="field"><label for="variationAmount">Change</label><select id="variationAmount">
+            <option value="0.25">A little</option><option value="0.5" selected>Half</option><option value="1">All</option>
+          </select></div>
+        </div>
+        <div class="variation-actions">
+          <button id="varyBtn" class="secondary">Vary lead</button>
+          <p id="variationStatus" class="small" role="status">Keep other layers. Undo any variation.</p>
+        </div>
+      </details>
+
+      <details class="section">
+        <summary>Melody</summary>
         <div class="field-grid">
           <div class="field">
             <label for="densityRange">Note Density <span class="value" id="densityValue"></span></label>
@@ -642,10 +672,10 @@
             <input id="arpRange" type="range" min="0" max="1" step="0.01" value="0.42" data-tooltip="Higher values make the lead line favor chord tones and arpeggio-like note choices.">
           </div>
         </div>
-      </div>
+      </details>
 
-      <div class="section">
-        <h2>Sound</h2>
+      <details class="section">
+        <summary>Sound</summary>
         <div class="field-grid">
           <div class="field">
             <label for="leadWaveSelect">Lead Wave</label>
@@ -672,7 +702,7 @@
             <input id="bitcrushRange" type="range" min="0" max="0.95" step="0.01" value="0.35" data-tooltip="Reduces fidelity to create a lo-fi digital grit closer to vintage game-console texture.">
           </div>
         </div>
-      </div>
+      </details>
 
       <div class="section">
         <h2>Tracks</h2>
@@ -777,6 +807,7 @@
   <div id="tooltip" class="tooltip"></div>
 
   <script src="project-state.js"></script>
+  <script src="pattern-tools.js"></script>
   <script>
     const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     const SCALES = {
@@ -984,7 +1015,7 @@
       const crusher = createBitCrusher(ctx, state.params.crunch);
       const analyser = ctx.createAnalyser();
 
-      master.gain.value = 0.72;
+      master.gain.value = 0;
       dry.gain.value = 0.82;
       wet.gain.value = state.params.echo;
       delay.delayTime.value = 0.18;
@@ -998,6 +1029,7 @@
       filter.frequency.value = 6800;
 
       dry.connect(filter);
+      dry.connect(delay);
       wet.connect(filter);
       filter.connect(crusher);
       crusher.connect(analyser);
@@ -1006,7 +1038,7 @@
 
       analyser.fftSize = 1024;
 
-      state.audio = { ctx, master, dry, delay, feedback, wet, filter, crusher, analyser };
+      state.audio = { ctx, master, dry, delay, feedback, wet, filter, crusher, analyser, sources: new Map(), crusherAmount: state.params.crunch };
       state.analyserData = new Uint8Array(analyser.frequencyBinCount);
       updateFx();
       startVisualizer();
@@ -1014,7 +1046,7 @@
 
     function resetCrusher() {
       if (!state.audio) return;
-      const { ctx, filter, analyser, wet, dry, master, crusher } = state.audio;
+      const { ctx, filter, analyser, wet, dry, delay, crusher } = state.audio;
       try {
         dry.disconnect();
         wet.disconnect();
@@ -1024,10 +1056,10 @@
 
       const newCrusher = createBitCrusher(ctx, state.params.crunch);
       dry.connect(filter);
+      dry.connect(delay);
       wet.connect(filter);
       filter.connect(newCrusher);
       newCrusher.connect(analyser);
-      analyser.connect(master);
       state.audio.crusher = newCrusher;
     }
 
@@ -1037,7 +1069,9 @@
       state.audio.delay.delayTime.value = Math.min(0.3, 60 / state.params.tempo / 2);
       state.audio.feedback.gain.value = 0.15 + state.params.echo * 0.55;
       state.audio.filter.frequency.value = 3500 + (1 - state.params.crunch) * 4200;
-      resetCrusher();
+      if (state.audio.crusherAmount !== state.params.crunch) {
+        resetCrusher(); state.audio.crusherAmount = state.params.crunch;
+      }
     }
 
     function getScaleMidis(root, scale, octave) {
@@ -1049,13 +1083,14 @@
       return out;
     }
 
-    function generateLoopFromParams(p) {
+    function generateLoopFromParams(p, fixedProgression = null) {
       const rng = mulberry32(Number(p.seed) || 1);
       const totalSteps = p.bars * 16;
       const leadScale = getScaleMidis(p.key, p.scale, p.octave);
       const bassScale = getScaleMidis(p.key, p.scale, Math.max(1, p.octave - 2));
       const chordDegrees = [0, 3, 4, 5];
-      const progression = Array.from({ length: p.bars }, () => pick(rng, chordDegrees));
+      const generatedProgression = Array.from({ length: p.bars }, () => pick(rng, chordDegrees));
+      const progression = fixedProgression ? [...fixedProgression] : generatedProgression;
       const lead = [];
       const bass = [];
       const drums = [];
@@ -1236,10 +1271,50 @@
       ui.timelineCount.textContent = String(state.timeline.length);
       ui.timelineDuration.textContent = `${getTimelineDurationSeconds().toFixed(1)}s total`;
 
+      updateVariationChoices();
       renderStepGrids(state.loop);
       renderLibrary();
       renderTimeline();
       scheduleProjectSave();
+    }
+
+    function updateVariationChoices() {
+      const selected = Number(ui.variationBar.value);
+      if (ui.variationBar.options.length !== state.params.bars + 1) {
+        ui.variationBar.replaceChildren();
+        for (let bar = -1; bar < state.params.bars; bar++) {
+          const option = document.createElement('option');
+          option.value = String(bar); option.textContent = bar < 0 ? 'Whole loop' : `Bar ${bar + 1}`;
+          ui.variationBar.appendChild(option);
+        }
+        ui.variationBar.value = selected < state.params.bars ? String(selected) : '-1';
+      }
+      const track = ui.variationTrack.value;
+      const enabled = state.params[track + 'On'];
+      ui.varyBtn.textContent = `Vary ${track}${enabled ? '' : ' (muted)'}`;
+    }
+
+    function varyCurrentLayer() {
+      const track = ui.variationTrack.value, bar = Number(ui.variationBar.value), amount = Number(ui.variationAmount.value);
+      const seed = Math.floor(Math.random() * 999999) + 1;
+      const candidate = generateLoopFromParams({...state.params, seed}, state.loop.progression);
+      if (track === 'harmony') {
+        const rng = mulberry32(seed);
+        candidate.harmony = candidate.harmony.map(chord => {
+          if (!chord) return null;
+          const notes = [...chord];
+          for (let turns = Math.floor(rng() * notes.length); turns > 0; turns--) notes.push(notes.shift() + 12);
+          while (Math.max(...notes) > 127) for (let i = 0; i < notes.length; i++) notes[i] -= 12;
+          return notes;
+        });
+      }
+      const result = MusicVariation.vary(state.loop, candidate, {track, bar, amount, seed});
+      if (!result.changed) { ui.variationStatus.textContent = 'No different steps this time. Try again.'; return; }
+      rememberProject();
+      state.loop = result.loop; state.transportVisual = null;
+      refreshUI();
+      const location = bar < 0 ? 'whole loop' : `bar ${bar + 1}`;
+      ui.variationStatus.textContent = `${result.changed} ${track} ${result.changed === 1 ? 'step' : 'steps'} changed · ${location}. Undo to compare.${state.params[track + 'On'] ? '' : ' Turn this layer on to hear it.'}${state.playMode === 'timeline' ? ' Choose Loop Mode to hear this edit.' : ''}`;
     }
 
     function randomizeSettings() {
@@ -1275,7 +1350,7 @@
       rememberProject();
       readInputs();
       const name = ui.loopNameInput.value.trim() || `Loop ${state.savedLoops.length + 1}`;
-      const loop = generateLoopFromParams(state.params);
+      const loop = state.loop || generateLoopFromParams(state.params);
       state.loop = loop;
       state.savedLoops.unshift({ id: uid("loop"), name, params: clone(state.params), loop: clone(loop) });
       refreshUI();
@@ -1485,6 +1560,15 @@
       return { clip: seq[0], clipIndex: 0, localStep: 0 };
     }
 
+    function trackAudioSource(source, nodes) {
+      const sources = state.audio.sources;
+      sources.set(source, nodes);
+      source.onended = () => {
+        sources.delete(source);
+        for (const node of [source, ...nodes]) { try { node.disconnect(); } catch {} }
+      };
+    }
+
     function scheduleTone(time, freq, duration, type, volume = 0.25, glide = false) {
       const { ctx, dry } = state.audio;
       const osc = ctx.createOscillator();
@@ -1497,6 +1581,7 @@
       gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
       osc.connect(gain);
       gain.connect(dry);
+      trackAudioSource(osc, [gain]);
       osc.start(time);
       osc.stop(time + duration + 0.02);
     }
@@ -1517,6 +1602,7 @@
       source.connect(filter);
       filter.connect(gain);
       gain.connect(dry);
+      trackAudioSource(source, [filter, gain]);
       source.start(time);
       source.stop(time + duration + 0.01);
     }
@@ -1551,6 +1637,7 @@
           gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.12);
           osc.connect(gain);
           gain.connect(dry);
+          trackAudioSource(osc, [gain]);
           osc.start(when);
           osc.stop(when + 0.14);
         }
@@ -1608,22 +1695,24 @@
 
     async function startPlayback() {
       const request = ++playRequest;
-      initAudio();
       readInputs();
-
       if (state.playMode === "timeline" && !state.timeline.length) {
-        alert("Add at least one saved loop to the timeline before using Timeline Mode.");
+        projectStatus('Add a saved loop to the timeline, or choose Loop Mode.', true);
         return;
       }
-
-      if (state.audio.ctx.state === "suspended") {
-        await state.audio.ctx.resume();
+      try {
+        initAudio();
+        if (state.audio.ctx.state === "suspended") await state.audio.ctx.resume();
+      } catch (error) {
+        if (request === playRequest) projectStatus('Could not start sound. Try Play again. ' + error.message, true);
+        return;
       }
 
       if (request !== playRequest) return;
       if (!state.loop) generateLoop();
       if (state.isPlaying) return;
 
+      state.audio.master.gain.setValueAtTime(.72, state.audio.ctx.currentTime);
       state.isPlaying = true;
       state.stepIndex = 0;
       state.currentBar = 0;
@@ -1636,6 +1725,7 @@
 
     function stopPlayback() {
       playRequest++;
+      silenceAudio();
       state.transportVisual = null;
       state.isPlaying = false;
       if (state.intervalId) clearInterval(state.intervalId);
@@ -1649,6 +1739,25 @@
       ui.currentStep.textContent = "1 / 16";
       renderStepGrids(state.loop);
       renderTimeline();
+    }
+
+    function silenceAudio() {
+      if (!state.audio?.sources) return;
+      const audio = state.audio, now = audio.ctx.currentTime;
+      audio.master.gain.cancelScheduledValues(now);
+      audio.master.gain.setValueAtTime(0, now);
+      for (const [source, nodes] of audio.sources) {
+        try { source.stop(now); } catch {}
+        for (const node of [source, ...nodes]) { try { node.disconnect(); } catch {} }
+      }
+      audio.sources.clear();
+      // A new echo buffer prevents the stopped loop leaking into a quick restart.
+      audio.dry.disconnect(audio.delay); audio.delay.disconnect(); audio.feedback.disconnect();
+      audio.delay = audio.ctx.createDelay(.4); audio.feedback = audio.ctx.createGain();
+      audio.delay.delayTime.value = Math.min(.3, 60 / state.params.tempo / 2);
+      audio.feedback.gain.value = .15 + state.params.echo * .55;
+      audio.dry.connect(audio.delay); audio.delay.connect(audio.feedback);
+      audio.feedback.connect(audio.delay); audio.delay.connect(audio.wet);
     }
 
     function renderStepGrid(container, data, type) {
@@ -1863,44 +1972,30 @@
     }
 
     function bindEvents() {
-      const regen = [
-        ui.keySelect,
-        ui.scaleSelect,
-        ui.barsRange,
-        ui.swingRange,
-        ui.densityRange,
-        ui.variationRange,
-        ui.octaveRange,
-        ui.arpRange,
-        ui.seedInput,
-        ui.leadWaveSelect,
-        ui.bassWaveSelect,
-        ui.leadToggle,
-        ui.bassToggle,
-        ui.drumsToggle,
-        ui.harmonyToggle,
-        ui.modeLoop,
-        ui.modeTimeline
-      ];
-
-      regen.forEach(el => {
-        el.addEventListener("input", () => {
-          readInputs();
-          generateLoop();
+      const compose = [ui.keySelect,ui.scaleSelect,ui.barsRange,ui.densityRange,
+        ui.variationRange,ui.octaveRange,ui.arpRange,ui.seedInput];
+      compose.forEach(el => {
+        let editing = false;
+        el.addEventListener('input', () => {
+          if (!editing) { rememberProject(); editing = true; }
+          readInputs(); generateLoop();
         });
-        el.addEventListener("change", () => {
-          readInputs();
-          generateLoop();
+        el.addEventListener('change', () => {
+          if (!editing) rememberProject();
+          editing = false; readInputs(); generateLoop(); ui.seedInput.value = state.params.seed;
         });
       });
-
-      [ui.echoRange, ui.bitcrushRange, ui.tempoRange].forEach(el => {
-        el.addEventListener("input", () => {
-          readInputs();
-          if (state.audio) updateFx();
-          refreshUI();
+      [ui.swingRange,ui.leadWaveSelect,ui.bassWaveSelect,ui.leadToggle,ui.bassToggle,
+        ui.drumsToggle,ui.harmonyToggle,ui.echoRange,ui.bitcrushRange,ui.tempoRange].forEach(el => {
+        el.addEventListener('input', () => {
+          readInputs(); if (state.audio) updateFx(); refreshUI();
         });
       });
+      [ui.modeLoop,ui.modeTimeline].forEach(el => el.addEventListener('change', () => {
+        stopPlayback(); readInputs(); refreshUI();
+      }));
+      ui.variationTrack.addEventListener('change', updateVariationChoices);
+      ui.varyBtn.onclick = varyCurrentLayer;
 
       ui.playBtn.onclick = startPlayback;
       ui.stopBtn.onclick = stopPlayback;
@@ -1945,7 +2040,7 @@
         if (e.defaultPrevented || e.altKey || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.target.closest('input,textarea,select,[contenteditable]')) return;
         e.preventDefault(); restoreHistory(e.shiftKey);
       });
-      window.addEventListener('pagehide', flushProject);
+      window.addEventListener('pagehide', () => { stopPlayback(); flushProject(); });
     }
 
     bindEvents();
