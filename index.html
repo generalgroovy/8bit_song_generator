@@ -788,6 +788,7 @@
       ui.transportHint.textContent = empty ? 'Save a loop, then Add to arrangement to hear a song.' : silent ? 'All layers are muted. Turn on a layer in the loop editor.' : state.playMode === 'timeline' ? 'Saved clips play in order. Choose This loop to hear editor changes.' : state.isPlaying ? 'Your loop repeats. Shape it while it plays, or Stop anytime.' : 'Ready when you are. Press Play to hear your loop.';
       ui.clearTimelineBtn.disabled = !state.timeline.length;
       ui.exportTimelineBtn.disabled = !state.timeline.length;
+      ui.saveLoopBtn.textContent = state.playMode === 'timeline' ? 'Save editor loop' : 'Save loop';
     }
 
     function refreshUI() {

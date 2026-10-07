@@ -19,7 +19,11 @@ The original first view spent most of its space on a large waveform, repeated me
 
 Local: `node --test tests/*.test.cjs` — 24 tests pass. `node --check tests/browser.mjs` and `git diff --check` pass. The new tests cover empty/pending/playing controls, arrangement-source preview, and autosave preserving action feedback. Existing audio cancellation, import/recovery, exact-note variation, transport, focus and WAV tests remain passing.
 
-The isolated CI browser workflow is extended to 1440 × 900, 390 × 900, 320 × 900 and 844 × 420. It checks direct save discovery, preview placement, empty arrangement recovery, keyboard help/Escape, clip action focus and arrangement previews along with the previous complete music/project regression. CI and independent review results are pending at this checkpoint.
+The isolated CI browser workflow is extended to 1440 × 900, 390 × 900, 320 × 900 and 844 × 420. It checks direct save discovery, preview placement, empty arrangement recovery, keyboard help/Escape, clip action focus and arrangement previews along with the previous complete music/project regression. First candidate CI passed all Node checks and reached the browser save action; it found an obsolete exact-label selector (Loop Name versus Loop name), now corrected. The final candidate CI result is recorded below when complete.
+
+Root real-browser verification passed at 1366 × 900, 390 × 900 and 320 × 900: direct save, add to arrangement, playback source selection, Edit copy returning to This loop with editor focus, keyboard tooltip/Escape, Play/Stop and no page overflow. Screenshots are recorded by the parent in the shared UX evidence directory. A singular-count wording issue found there was fixed.
+
+Independent agent review inspected the actual diff and reran all 24 tests, finding no release blocker in empty/pending/cancelled transport, clip previews, editor-copy isolation, save/import/history, tooltip naming or focused clip rerenders. Review clarified saving while Arrangement is selected: its button now reads Save editor loop. Self-review added long-name wrapping, 44px playback target labels and history clearing stale clip-save feedback. These preserve the tested workflow.
 
 ## Acceptance boundaries
 

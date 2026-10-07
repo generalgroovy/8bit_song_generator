@@ -5,7 +5,7 @@ const {readFileSync}=require('node:fs');
 const html=readFileSync(require('node:path').join(__dirname,'..','index.html'),'utf8');
 function preview() {
   const state={playMode:'loop',isPlaying:false,isStarting:false,activeTimelineClipIndex:0,params:{key:'C',scale:'minor',tempo:120,bars:4,leadOn:true},loop:{id:'editor'},timeline:[]};
-  const ui=Object.fromEntries(['previewLabel','songTitle','metaTempo','metaBars','metaMode','currentBar','currentStep','playBtn','stopBtn','playState','transportHint','clearTimelineBtn','exportTimelineBtn'].map(id=>[id,{}]));
+  const ui=Object.fromEntries(['previewLabel','songTitle','metaTempo','metaBars','metaMode','currentBar','currentStep','playBtn','stopBtn','playState','transportHint','clearTimelineBtn','exportTimelineBtn','saveLoopBtn'].map(id=>[id,{}]));
   const ctx=vm.createContext({state,ui,prettyScaleName:x=>x});
   vm.runInContext(html.slice(html.indexOf('    function previewClip()'),html.indexOf('    function refreshUI()')),ctx);
   return {state,ui,run:code=>vm.runInContext(code,ctx)};
@@ -17,7 +17,7 @@ test('play controls explain empty arrangements, prevent duplicate starts and all
   assert.equal(app.ui.playBtn.disabled,true);assert.equal(app.ui.stopBtn.disabled,false);assert.equal(app.ui.playBtn.textContent,'Starting…');
   app.state.isStarting=false;app.state.playMode='timeline';app.run('updatePlaybackControls()');
   assert.equal(app.ui.playBtn.disabled,true);assert.equal(app.ui.clearTimelineBtn.disabled,true);assert.equal(app.ui.exportTimelineBtn.disabled,true);
-  assert.match(app.ui.transportHint.textContent,/Add to arrangement/);
+  assert.match(app.ui.transportHint.textContent,/Add to arrangement/);assert.equal(app.ui.saveLoopBtn.textContent,'Save editor loop');
   app.state.timeline=[{id:'saved'}];app.run('updatePlaybackControls()');
   assert.equal(app.ui.playBtn.disabled,false);assert.equal(app.ui.exportTimelineBtn.disabled,false);
   app.state.playMode='loop';app.state.params.leadOn=false;app.run('updatePlaybackControls()');
