@@ -1,0 +1,118 @@
+[
+  {
+    "width": 1440,
+    "height": 900,
+    "checks": [
+      "direct save without disclosure",
+      "empty arrangement and actionable playback state",
+      "notes near playback",
+      "keyboard tooltip and Escape",
+      "add/edit-copy focus",
+      "preview follows arrangement",
+      "selected layer/bar variation",
+      "sound and mode preserve actual notes",
+      "variation undo/redo",
+      "Stop clears live scheduled sources",
+      "save retains varied notes",
+      "save/add/reorder/undo/redo",
+      "clear/restore",
+      "library removal preserves timeline",
+      "JSON keyboard export/import/error preservation",
+      "import undo/redo",
+      "autosave/reload",
+      "corrupt recovery",
+      "mobile width"
+    ],
+    "geometry": {
+      "width": 1440,
+      "scroll": 1440
+    }
+  },
+  {
+    "width": 390,
+    "height": 900,
+    "checks": [
+      "direct save without disclosure",
+      "empty arrangement and actionable playback state",
+      "notes near playback",
+      "keyboard tooltip and Escape",
+      "add/edit-copy focus",
+      "preview follows arrangement",
+      "selected layer/bar variation",
+      "sound and mode preserve actual notes",
+      "variation undo/redo",
+      "Stop clears live scheduled sources",
+      "save retains varied notes",
+      "save/add/reorder/undo/redo",
+      "clear/restore",
+      "library removal preserves timeline",
+      "JSON keyboard export/import/error preservation",
+      "import undo/redo",
+      "autosave/reload",
+      "corrupt recovery",
+      "mobile width"
+    ],
+    "geometry": {
+      "width": 390,
+      "scroll": 390
+    }
+  },
+  {
+    "width": 320,
+    "height": 900,
+    "checks": [
+      "direct save without disclosure",
+      "empty arrangement and actionable playback state",
+      "notes near playback",
+      "keyboard tooltip and Escape",
+      "add/edit-copy focus",
+      "preview follows arrangement",
+      "selected layer/bar variation",
+      "sound and mode preserve actual notes",
+      "variation undo/redo",
+      "Stop clears live scheduled sources",
+      "save retains varied notes",
+      "save/add/reorder/undo/redo",
+      "clear/restore",
+      "library removal preserves timeline",
+      "JSON keyboard export/import/error preservation",
+      "import undo/redo",
+      "autosave/reload",
+      "corrupt recovery",
+      "mobile width"
+    ],
+    "geometry": {
+      "width": 320,
+      "scroll": 320
+    }
+  },
+  {
+    "width": 844,
+    "height": 420,
+    "checks": [
+      "direct save without disclosure",
+      "empty arrangement and actionable playback state",
+      "notes near playback",
+      "keyboard tooltip and Escape",
+      "add/edit-copy focus",
+      "preview follows arrangement",
+      "selected layer/bar variation",
+      "sound and mode preserve actual notes",
+      "variation undo/redo",
+      "Stop clears live scheduled sources",
+      "save retains varied notes",
+      "save/add/reorder/undo/redo",
+      "clear/restore",
+      "library removal preserves timeline",
+      "JSON keyboard export/import/error preservation",
+      "import undo/redo",
+      "autosave/reload",
+      "corrupt recovery",
+      "mobile width"
+    ],
+    "geometry": {
+      "width": 844,
+      "scroll": 844
+    }
+  }
+]
