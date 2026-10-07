@@ -61,11 +61,11 @@ try {
     await page.waitForFunction(()=>state.audio.master.gain.value===0,{},{timeout:1000});
     assert.deepEqual(await page.evaluate(()=>({playing:state.isPlaying,sources:state.audio.sources.size,output:state.audio.master.gain.value})),{playing:false,sources:0,output:0});
     await page.locator('#savePanel > summary').click();
-    await page.getByRole('textbox',{name:'Loop Name',exact:true}).fill('Verse');
+    await page.getByRole('textbox',{name:'Loop name',exact:true}).fill('Verse');
     await page.locator('#saveLoopBtn').click();assert.deepEqual(await page.evaluate(()=>state.savedLoops[0].loop),varied.loop);await page.locator('#savedLoops').getByRole('button',{name:'Add to arrangement',exact:true}).click();
     assert.equal(await page.evaluate(()=>document.activeElement.textContent),'Add to arrangement');
     assert.match(await page.locator('#clipStatus').textContent(),/1 clip/);
-    await page.getByRole('textbox',{name:'Loop Name',exact:true}).fill('Chorus');await page.locator('#rerollBtn').click();await page.locator('#saveLoopBtn').click();
+    await page.getByRole('textbox',{name:'Loop name',exact:true}).fill('Chorus');await page.locator('#rerollBtn').click();await page.locator('#saveLoopBtn').click();
     await page.locator('#savedLoops .loop-chip').first().getByRole('button',{name:'Add to arrangement',exact:true}).click();
     await page.locator('#timelineItems .timeline-item').nth(1).getByRole('button',{name:'Move clip earlier',exact:true}).click();
     assert.deepEqual(await page.locator('#timelineItems .loop-name').allTextContents(),['Chorus','Verse']);

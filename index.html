@@ -30,7 +30,7 @@
     .toolbar,.save-row,.export-row,.toggles,.field-grid,.compose-actions,.loop-actions,.timeline-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
     .mode-row { display:flex; gap:16px; padding:0; margin:0 0 10px; border:0; }
     .mode-row legend { float:left; margin-right:14px; color:var(--muted); font-size:.88rem; }
-    .mode-chip { display:flex; gap:6px; align-items:center; font-size:.88rem; min-height:28px; cursor:pointer; }
+    .mode-chip { display:flex; gap:6px; align-items:center; font-size:.88rem; min-height:44px; cursor:pointer; }
     .mode-chip input,.toggle input { accent-color:var(--accent); }
     .transport .small { font-size:.8rem; margin:8px 0 0; }
     .feedback-row { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:14px; padding-top:12px; border-top:1px solid var(--border); }
@@ -56,7 +56,8 @@
     .main { display:grid; gap:16px; align-content:start; min-width:0; }
     .hero,.library-panel,.timeline-panel,.pattern-details { padding:20px; min-width:0; }
     .title-row,.panel-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
-    .title-row h2 { font-size:1.4rem; }
+    .title-row > div { min-width:0; max-width:100%; }
+    .title-row h2 { font-size:1.4rem; overflow-wrap:anywhere; }
     .label { color:var(--muted); font-size:.78rem; margin-bottom:3px; }
     .meta,.loop-meta { display:flex; flex-wrap:wrap; gap:8px 16px; font-size:.8rem; color:var(--muted); margin:8px 0 12px; }
     .pill { border:1px solid var(--border); border-radius:8px; padding:4px 8px; color:var(--muted); font-size:.8rem; white-space:nowrap; }
@@ -435,7 +436,7 @@
     function restoreHistory(redo = false) {
       const saved = projectHistory.move(captureProject(), redo);
       if (!saved) return;
-      applyProject(saved); refreshUI(); projectStatus(redo ? 'Redone.' : 'Undone.');
+      applyProject(saved); refreshUI(); ui.clipStatus.textContent = ''; projectStatus(redo ? 'Redone.' : 'Undone.');
     }
     function flushProject() {
       clearTimeout(saveTimer);
