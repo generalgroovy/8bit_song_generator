@@ -55,7 +55,7 @@ test('history restores exact clips across reorder, removal, clear and import, in
   assert.ok(history.past.length<=30);assert.ok(history.past.reduce((n,s)=>n+s.length,0)<=4_000_000);
 });
 function persistence(store) {
-  const ui={loopNameInput:{value:'Current'},projectStatus:{setAttribute(){}},keepProjectBtn:{hidden:true},undoProjectBtn:{},redoProjectBtn:{}};
+  const ui={loopNameInput:{value:'Current'},projectStatus:{setAttribute(){}},autosaveStatus:{},keepProjectBtn:{hidden:true},undoProjectBtn:{},redoProjectBtn:{}};
   const p=project(), state={...clone(p),isPlaying:false};
   const ctx=vm.createContext({ui,state,MusicProject:Project,SCALES:Object.fromEntries(scales.map(s=>[s,[]])),clone,
     setTimeout:()=>1,clearTimeout(){},localStorage:{getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v)},stopPlayback(){state.isPlaying=false;},syncInputs(){},updateFx(){},refreshUI(){}});
@@ -71,10 +71,15 @@ test('autosave roundtrip and malformed-current recovery preserve original storag
   app.state.timeline=[];app.run('flushProject()');assert.equal(store.get('8bit-music.current.v1'),'damaged');
   app.run("autosaveAllowed=true;lastSaved='';flushProject()");assert.equal(JSON.parse(store.get('8bit-music.current.v1')).timeline.length,0);
 });
+test('background autosave preserves actionable feedback and reports persistence separately', () => {
+  const app=persistence(new Map());app.run("projectStatus('Project opened. Undo restores your previous workspace.');flushProject()");
+  assert.equal(app.ui.projectStatus.textContent,'Project opened. Undo restores your previous workspace.');
+  assert.match(app.ui.autosaveStatus.textContent,/Saved in this browser/);
+});
 test('Stop invalidates a pending audio resume before it can restart transport', async () => {
   let resolve, starts=0;
   const state={audio:{ctx:{state:'suspended',resume:()=>new Promise(r=>resolve=r),currentTime:0}},params:{bars:4},loop:{},timeline:[],playMode:'loop',isPlaying:false};
-  const ctx=vm.createContext({state,ui:{playState:{},currentBar:{},currentStep:{}},initAudio(){},readInputs(){},generateLoop(){},renderStepGrids(){},renderTimeline(){},clearInterval(){},startTransportLoop(){starts++;}});
+  const ctx=vm.createContext({state,ui:{playState:{},currentBar:{},currentStep:{}},initAudio(){},readInputs(){},generateLoop(){},updatePlaybackControls(){},refreshPreview(){},previewClip(){return {loop:state.loop};},renderStepGrids(){},renderTimeline(){},clearInterval(){},startTransportLoop(){starts++;}});
   vm.runInContext('let playRequest=0;'+html.slice(html.indexOf('    async function startPlayback()'),html.indexOf('    function renderStepGrid(')),ctx);
   const start=vm.runInContext('startPlayback()',ctx);vm.runInContext('stopPlayback()',ctx);resolve();await start;
   assert.equal(starts,0);assert.equal(state.isPlaying,false);

@@ -10,24 +10,25 @@
 
 [Project overview](https://generalgroovy.web.app/apps/8-bit-loop-generator/) · [Project-state implementation](project-state.js) · [Tests](tests/)
 
-## Core workflow
+## Make a loop, keep it, build a song
 
-1. Set key, scale, tempo, bars and seed. Adjust melody, sound and track controls. **New Pattern** changes the seed; **Randomize** changes the musical settings too.
-2. Open **Shape one layer** to vary just Lead, Bass, Drums or Harmony, across the whole loop or one bar. **A little / Half / All** changes that fraction of the differing steps. Harmony can change voicing while keeping the progression. The other layers and saved clips stay intact; **Undo / Redo** lets you compare. Each click explores a fresh random candidate.
-3. Use **Play** and **Stop** in **Loop Mode** to audition the current pattern.
-4. Open **Save & Export**, enter a loop name and choose **Save Loop** to keep a snapshot in the clip library.
-5. Choose **Add** on a saved clip, or drag it onto the timeline. Use each clip’s **↑ / ↓** buttons or drag timeline clips to reorder; **Copy** duplicates a clip and **Remove** removes it.
-6. Select **Timeline Mode** and **Play**. The arrangement repeats. Removing its final clip or clearing the timeline stops that transport; it does not silently play the editor loop.
-7. **Save project** downloads an editable JSON backup with the complete editor, sound settings, actual generated notes, library and arrangement. **Open project** restores it.
-8. **Export Loop** or **Export Timeline** downloads a mono 44.1 kHz, 16-bit PCM WAV file (up to ten minutes).
+1. Choose **This loop** and press **Play loop**. The notes and current bar are visible beside the editor. **Stop** cancels sound, including a pending audio start.
+2. **New pattern** keeps your settings and changes the notes. **Surprise me** changes the musical settings too. Both are undoable. Key, scale and length are immediately available; **Melody & rhythm** and **Sound** reveal deeper choices.
+3. Open **Shape one layer** to vary Lead, Bass, Drums or Harmony across the whole loop or one bar. **A little / Half / All** replaces that fraction of the differing steps. Other layers and saved clips stay intact. **Undo / Redo** lets you compare.
+4. In **Keep a good loop**, name the loop and choose **Save loop**. This saves the exact notes and sound settings as an independent clip. Choose **Add to arrangement** on a clip to place it in your song.
+5. Use the arrangement's **↑ / ↓** controls or drag to reorder; **Copy** repeats a clip and **Remove** removes it. Choose **Arrangement** beside Play to hear saved clips in order, repeating. The preview follows the actual clip being heard. Empty arrangements explain how to get started.
+6. **Edit copy** opens a separate loop editor copy and selects **This loop**. Save it again to keep your new version; existing saved and arranged clips remain independent.
+7. Open **Project & downloads** for **Download project** (an editable JSON backup), **Open project**, **Loop WAV** or **Arrangement WAV**. Audio downloads are mono 44.1 kHz, 16-bit PCM WAV, up to ten minutes. The separate renderer does not reproduce live echo, crunch or exact drum timbre.
 
-**Load** and **Load copy** bring a snapshot into the editor; they do not edit an existing library/timeline clip in place. After changing it, save and add a new snapshot. Clip names are displayed as literal text. Save Loop retains the actual notes you hear, including variations and imported edits. Changing tempo, swing, waveforms, effects, track switches or playback mode does not regenerate those notes. Key, scale, length, seed and Melody controls compose a new full pattern; Undo recovers your earlier version. Stop silences scheduled notes and echo, and switching modes stops playback.
+Tempo, swing, waveforms, effects, layer switches and playback target preserve generated notes. Key, scale, length, seed and melody controls compose fresh notes; Undo recovers the previous version. Save loop retains actual variations and imported notes. Changing playback target stops sound; an empty arrangement never falls back to the editor loop.
+
+Keyboard focus follows clip actions, and editing a copy returns focus to the editor. Focus a musical control for its help; Escape dismisses the tooltip. **How it works** contains the longer explanations. Saving feedback stays beside the clips, while browser autosave status lives in Project & downloads.
 
 ## State and export limits
 
 The complete project autosaves in the current browser after edits. A previous valid draft is retained for recovery. If the current draft is damaged, the previous draft is opened when possible and original storage is preserved: download a JSON backup, then choose **Keep this project** to resume autosave. Storage failures stay visible; JSON download remains available.
 
-**Undo / Redo** restores library/arrangement actions (add, copy, reorder, remove, clear), loop loads, layer variations, melody changes, New Pattern, Randomize and JSON imports. Ctrl/Command+Z and Shift+Z work outside editable fields. Restoring stops playback; it never starts audio automatically. History is session-only and bounded to 30 steps and approximately four million stored characters. A continuous melody adjustment is one undo step. Sound and tempo adjustments autosave but are not individual undo steps. The starting seed recreates the original full pattern; actual variations are preserved in JSON backups, autosaves and saved clips. Layer/bar/change choices are temporary controls, not part of the saved musical material.
+**Undo / Redo** restores library/arrangement actions (add, copy, reorder, remove, clear), loop loads, layer variations, melody changes, New pattern, Surprise me and JSON imports. Ctrl/Command+Z and Shift+Z work outside editable fields. Restoring stops playback; it never starts audio automatically. History is session-only and bounded to 30 steps and approximately four million stored characters. A continuous melody adjustment is one undo step. Sound and tempo adjustments autosave but are not individual undo steps. The starting seed recreates the original full pattern; actual variations are preserved in JSON backups, autosaves and saved clips. Layer/bar/change choices are temporary controls, not part of the saved musical material.
 
 The library and timeline each hold up to 64 clips. A library removal leaves existing timeline copies intact. JSON imports are limited to 5 MB and validate settings, actual notes, lengths and identities before changing the workspace. Invalid imports leave current work unchanged. Unknown application-state fields are ignored; audio nodes and running transport are never imported.
 
@@ -45,8 +46,8 @@ With Node.js 18 or newer:
 node --test tests/*.test.cjs
 ```
 
-The suites exercise constrained variations, exact-note saving, non-destructive sound controls, audio source cancellation, WAV headers/samples, transport redraws, empty timelines, reorder focus, literal names, complete-project round trips, every scale at legal extremes, invalid imports, undo/redo, damaged-save recovery, audio-resume cancellation and export bounds. The optional `node tests/browser.mjs` suite exercises full project workflows at 1440, 390 and 320px; supply `PLAYWRIGHT_PATH` and optionally `CHROMIUM_PATH` for an isolated existing installation. Audio scheduling reads the current loop directly rather than repeatedly cloning its arrays; unchanged visible steps do not rebuild the grids.
+The suites exercise constrained variations, exact-note saving, non-destructive sound controls, audio source cancellation, WAV headers/samples, transport redraws, empty timelines, reorder focus, literal names, complete-project round trips, every scale at legal extremes, invalid imports, undo/redo, damaged-save recovery, audio-resume cancellation and export bounds. The optional `node tests/browser.mjs` suite exercises full project workflows at 1440, 390 and 320px plus a short 844 × 420 viewport; supply `PLAYWRIGHT_PATH` and optionally `CHROMIUM_PATH` for an isolated existing installation. Audio scheduling reads the current loop directly rather than repeatedly cloning its arrays; unchanged visible steps do not rebuild the grids.
 
 A browser acceptance pass should generate and play a loop, save/add/reorder clips, remove the final clip during timeline playback, and inspect/listen to an exported WAV. Automated tests do not establish listening quality, timing under every device load, or musical suitability.
 
-GitHub Actions runs the Node suite and the isolated browser workflow at 1440, 390 and 320 px. See [the quality record](PROJECT-QUALITY-2026-10-06.md) for this candidate’s evidence and limits.
+GitHub Actions runs the Node suite and the isolated browser workflow at 1440, 390 and 320 px plus 844 × 420. See [the UX iteration record](PROJECT-UX-2026-10-07.md) for current evidence and limits, and [the previous quality record](PROJECT-QUALITY-2026-10-06.md) for the earlier variation work.

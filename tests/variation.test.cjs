@@ -39,7 +39,7 @@ test('Save Loop snapshots actual imported or varied notes and leaves editor and 
   const ctx=generator(), loop=clone(vm.runInContext('generateLoopFromParams(params)',ctx));
   loop.lead[0]={midi:72,len:16,vel:.3};
   const before=clone(loop), state={params:clone(params),loop,savedLoops:[],isPlaying:true};let remembers=0;
-  Object.assign(ctx,{state,MusicProject:Project,ui:{loopNameInput:{value:'Edited'}},readInputs(){},rememberProject(){remembers++;},clone,uid:()=> 'first',refreshUI(){},projectStatus(){}});
+  Object.assign(ctx,{state,MusicProject:Project,ui:{loopNameInput:{value:'Edited'},clipStatus:{}},readInputs(){},rememberProject(){remembers++;},clone,uid:()=> 'first',refreshUI(){},projectStatus(){}});
   vm.runInContext(html.slice(html.indexOf('    function saveCurrentLoop()'),html.indexOf('    function loadLoop(')),ctx);
   vm.runInContext('saveCurrentLoop()',ctx);
   assert.deepEqual(state.savedLoops[0].loop,before);assert.deepEqual(state.loop,before);assert.equal(remembers,1);assert.equal(state.isPlaying,true);
@@ -109,7 +109,7 @@ test('WAV output has a valid mono PCM header, expected duration and non-silent s
 test('audio resume errors stay stopped and report recoverable feedback', async () => {
   let message='';
   const state={audio:{ctx:{state:'suspended',resume:async()=>{throw Error('Unavailable');}}},params:{},timeline:[],playMode:'loop',isPlaying:false};
-  const ctx=vm.createContext({state,readInputs(){},initAudio(){},projectStatus:m=>message=m});
+  const ctx=vm.createContext({state,readInputs(){},initAudio(){},updatePlaybackControls(){},projectStatus:m=>message=m});
   vm.runInContext('let playRequest=0;'+html.slice(html.indexOf('    async function startPlayback()'),html.indexOf('    function stopPlayback()')),ctx);
   await vm.runInContext('startPlayback()',ctx);
   assert.equal(state.isPlaying,false);assert.match(message,/Try Play again/);

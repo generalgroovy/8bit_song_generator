@@ -5,580 +5,129 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>8-Bit Loop Generator</title>
   <style>
-    :root {
-      --bg: #0f1220;
-      --panel: #171b2e;
-      --panel-2: #1f2540;
-      --text: #edf2ff;
-      --muted: #a8b3d9;
-      --accent: #7cf7c5;
-      --accent-2: #8db7ff;
-      --danger: #ff7e9b;
-      --warning: #ffd479;
-      --border: #323a62;
-      --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(124, 247, 197, 0.08), transparent 28%),
-        radial-gradient(circle at top right, rgba(141, 183, 255, 0.10), transparent 34%),
-        linear-gradient(180deg, #0b0e18, var(--bg));
-      color: var(--text);
-      min-height: 100vh;
-      padding: 24px;
-    }
-
-    .app {
-      max-width: 1380px;
-      margin: 0 auto;
-      display: grid;
-      gap: 20px;
-      grid-template-columns: 370px 1fr;
-    }
-
-    .panel {
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    .controls {
-      padding: 20px;
-      align-self: start;
-      position: sticky;
-      top: 20px;
-    }
-
-    h1 { margin: 0 0 6px; font-size: 1.8rem; }
-
-    .sub {
-      color: var(--muted);
-      font-size: 0.97rem;
-      margin-bottom: 18px;
-      line-height: 1.5;
-    }
-
-    .toolbar,
-    .mode-row,
-    .save-row,
-    .export-row,
-    .toggles,
-    .timeline-actions,
-    .loop-actions {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    button,
-    select,
-    input[type="range"],
-    input[type="number"],
-    input[type="text"] {
-      width: 100%;
-    }
-
-    button {
-      border: 0;
-      border-radius: 14px;
-      padding: 12px 14px;
-      font-size: 0.95rem;
-      font-weight: 700;
-      cursor: pointer;
-      color: #0c111d;
-      background: var(--accent);
-      transition: transform 0.15s ease, filter 0.15s ease;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.03);
-    }
-
-    button.secondary { background: var(--accent-2); }
-    button.ghost {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    button.stop { background: var(--danger); }
-    button.warn { background: var(--warning); }
-
-    .section {
-      padding: 14px 0 4px;
-      border-top: 1px solid rgba(255,255,255,0.06);
-      margin-top: 10px;
-    }
-
-    .section h2 {
-      margin: 0 0 10px;
-      font-size: 0.98rem;
-      color: var(--accent);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-
-    .field-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .field { margin-bottom: 12px; }
-
-    .field label {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      font-size: 0.88rem;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .field .value {
-      color: var(--text);
-      font-weight: 700;
-      min-width: 3ch;
-      text-align: right;
-    }
-
-    select,
-    input[type="number"],
-    input[type="text"] {
-      background: var(--panel-2);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 0.95rem;
-    }
-
-    input[type="range"] {
-      appearance: none;
-      height: 8px;
-      border-radius: 999px;
-      background: #2e375f;
-      outline: none;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      appearance: none;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 0 3px rgba(124,247,197,0.18);
-      cursor: pointer;
-    }
-
-    .toggle,
-    .mode-chip {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 0.92rem;
-      color: var(--text);
-    }
-
-    .toggle input,
-    .mode-chip input {
-      accent-color: var(--accent);
-    }
-
-    .main {
-      display: grid;
-      grid-template-rows: auto auto auto auto 1fr;
-      gap: 20px;
-      min-width: 0;
-    }
-
-    .hero {
-      padding: 20px;
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 16px;
-    }
-
-    .card {
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 18px;
-      padding: 16px;
-      min-width: 0;
-    }
-
-    .now-playing,
-    .visualizer-wrap,
-    .timeline-panel,
-    .library-panel {
-      display: grid;
-      gap: 10px;
-    }
-
-    .kicker {
-      display: inline-flex;
-      width: fit-content;
-      align-items: center;
-      gap: 8px;
-      border-radius: 999px;
-      padding: 7px 11px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: #081018;
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-    }
-
-    .title-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: end;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .title-row h2 {
-      margin: 0;
-      font-size: 1.6rem;
-    }
-
-    .meta,
-    .loop-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    .pill {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 999px;
-      padding: 8px 12px;
-    }
-
-    canvas {
-      width: 100%;
-      height: 180px;
-      display: block;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
-        repeating-linear-gradient(
-          to right,
-          rgba(255,255,255,0.03),
-          rgba(255,255,255,0.03) 1px,
-          transparent 1px,
-          transparent 20px
-        ),
-        linear-gradient(180deg, #0e1322, #0a0f1a);
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .status-grid {
-      display: grid;
-      gap: 16px;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      padding: 0 20px 20px;
-    }
-
-    .status-card { padding: 16px; }
-
-    .label {
-      color: var(--muted);
-      font-size: 0.84rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 8px;
-    }
-
-    .big {
-      font-size: 1.8rem;
-      font-weight: 800;
-      margin-bottom: 6px;
-    }
-
-    .small {
-      color: var(--muted);
-      line-height: 1.45;
-      font-size: 0.92rem;
-    }
-
-    .panel-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .library-panel,
-    .timeline-panel,
-    .tracks {
-      padding: 20px;
-    }
-
-    .saved-loops {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    }
-
-    .loop-chip,
-    .timeline-item {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px;
-      padding: 14px;
-      display: grid;
-      gap: 10px;
-      cursor: grab;
-    }
-
-    .timeline-item {
-      position: relative;
-      min-width: 220px;
-      flex: 1 1 220px;
-      background: linear-gradient(180deg, rgba(141,183,255,0.14), rgba(255,255,255,0.03));
-      border-color: rgba(141,183,255,0.28);
-    }
-
-    .timeline-item.playing {
-      border-color: var(--accent);
-      box-shadow: inset 0 0 0 1px rgba(124,247,197,0.35);
-    }
-
-    .loop-top {
-      display: flex;
-      align-items: start;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .loop-name {
-      font-weight: 800;
-      font-size: 1rem;
-    }
-
-    .timeline-dropzone {
-      min-height: 130px;
-      border: 2px dashed rgba(141,183,255,0.35);
-      border-radius: 18px;
-      padding: 12px;
-      background: rgba(255,255,255,0.02);
-      display: grid;
-      gap: 12px;
-      align-items: start;
-    }
-
-    .timeline-dropzone.dragover {
-      border-color: var(--accent);
-      background: rgba(124,247,197,0.06);
-    }
-
-    .timeline-items {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: stretch;
-    }
-
-    .timeline-actions button:first-child { grid-column: 1 / -1; }
-
-    .timeline-order {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-
-    .tracks {
-      display: grid;
-      gap: 14px;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(16, minmax(0, 1fr));
-      gap: 6px;
-    }
-
-    .step {
-      aspect-ratio: 1 / 1;
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(255,255,255,0.03);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .step.active::before,
-    .step.playing::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-    }
-
-    .step.active::before {
-      background: linear-gradient(180deg, rgba(124,247,197,0.55), rgba(124,247,197,0.18));
-    }
-
-    .step.playing::after {
-      box-shadow: inset 0 0 0 2px rgba(141,183,255,0.95);
-    }
-
-    .tooltip {
-      position: fixed;
-      z-index: 1000;
-      max-width: 280px;
-      pointer-events: none;
-      background: rgba(6, 10, 18, 0.96);
-      border: 1px solid rgba(141,183,255,0.34);
-      color: var(--text);
-      padding: 10px 12px;
-      border-radius: 12px;
-      box-shadow: 0 14px 28px rgba(0,0,0,0.35);
-      font-size: 0.84rem;
-      line-height: 1.45;
-      opacity: 0;
-      transform: translateY(6px);
-      transition: opacity 0.12s ease, transform 0.12s ease;
-    }
-
-    .tooltip.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .hidden { display: none !important; }
-
-    .footer-note {
-      color: var(--muted);
-      font-size: 0.86rem;
-      line-height: 1.5;
-      padding-top: 10px;
-    }
-
-    @media (max-width: 1140px) {
-      .app { grid-template-columns: 1fr; }
-      .controls { position: static; }
-      .hero,
-      .tracks { grid-template-columns: 1fr; }
-      .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-
-    @media (max-width: 680px) {
-      body { padding: 14px; }
-      .field-grid,
-      .toolbar,
-      .mode-row,
-      .save-row,
-      .export-row,
-      .toggles,
-      .loop-actions,
-      .status-grid {
-        grid-template-columns: 1fr;
-      }
-      .steps { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-      .timeline-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .timeline-items { flex-direction: column; }
-    }
-    details.section > summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
-    details.section[open] > summary { margin-bottom: 12px; }
-    :focus-visible { outline: 3px solid var(--accent-2); outline-offset: 3px; }
-    button:disabled { opacity: .45; cursor: default; transform: none; }
-    .variation-actions { display: grid; gap: 10px; margin-top: 10px; }
-    .variation-actions .small { margin: 0; }
-    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+    :root { --bg:#101421; --panel:#171d2e; --panel-2:#222b43; --text:#edf2ff; --muted:#b0bbd5; --accent:#91edc5; --accent-2:#b0c9ff; --danger:#ffa0b5; --border:#39445d; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:24px; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:radial-gradient(ellipse at top left,#223347 0,transparent 45%),var(--bg); color:var(--text); line-height:1.5; }
+    .app { max-width:1260px; margin:auto; display:grid; grid-template-columns:340px minmax(0,1fr); gap:20px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:20px; }
+    .studio-header { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:16px 28px; padding:20px 24px; }
+    .brand { display:flex; align-items:center; gap:14px; }
+    .brand-mark { display:grid; place-items:center; width:52px; height:52px; flex:none; border-radius:14px; color:var(--accent); background:#293b3d; font-size:2rem; }
+    h1 { margin:0; font-size:1.7rem; letter-spacing:-.04em; }
+    .brand p { margin:2px 0 0; color:var(--muted); font-size:.9rem; }
+    h2 { margin:0; font-size:1.12rem; letter-spacing:-.015em; }
+    h3 { font-size:.9rem; }
+    p { margin:8px 0; }
+    button,select,input[type="number"],input[type="text"] { font:inherit; width:100%; min-height:44px; border-radius:10px; }
+    button { border:1px solid transparent; padding:10px 12px; font-size:.9rem; font-weight:650; color:#101921; background:var(--accent); cursor:pointer; }
+    button:hover:not(:disabled) { filter:brightness(1.08); }
+    button.secondary { background:var(--accent-2); }
+    button.ghost { background:transparent; color:var(--text); border-color:var(--border); }
+    button.stop { color:var(--danger); background:transparent; border-color:var(--border); }
+    button:disabled { opacity:.45; cursor:default; }
+    button span { display:block; margin-top:3px; font-size:.72rem; font-weight:400; }
+    :focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+    .toolbar,.save-row,.export-row,.toggles,.field-grid,.compose-actions,.loop-actions,.timeline-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .mode-row { display:flex; gap:16px; padding:0; margin:0 0 10px; border:0; }
+    .mode-row legend { float:left; margin-right:14px; color:var(--muted); font-size:.88rem; }
+    .mode-chip { display:flex; gap:6px; align-items:center; font-size:.88rem; min-height:28px; cursor:pointer; }
+    .mode-chip input,.toggle input { accent-color:var(--accent); }
+    .transport .small { font-size:.8rem; margin:8px 0 0; }
+    .feedback-row { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:14px; padding-top:12px; border-top:1px solid var(--border); }
+    .feedback-row p { margin:0; }
+    .history-actions { display:flex; flex:none; gap:8px; }
+    .history-actions button { width:auto; min-height:40px; padding:7px 14px; }
+    .controls { padding:20px; align-self:start; min-width:0; }
+    .section { margin-top:12px; border-top:1px solid var(--border); padding-top:10px; }
+    .controls > .section:first-child { border:0; margin-top:0; padding-top:0; }
+    .section h2 { margin-bottom:14px; font-size:1rem; }
+    summary { min-height:44px; display:list-item; align-content:center; padding:10px 0; font-weight:600; font-size:.94rem; cursor:pointer; }
+    details[open] > summary { margin-bottom:8px; }
+    .field { min-width:0; margin-bottom:10px; }
+    .field label { display:flex; align-items:center; justify-content:space-between; gap:8px; color:var(--muted); font-size:.8rem; margin-bottom:5px; }
+    .field .value { color:var(--text); font-variant-numeric:tabular-nums; }
+    select,input[type="number"],input[type="text"] { color:var(--text); background:var(--panel-2); border:1px solid var(--border); padding:8px 10px; font-size:.9rem; min-width:0; }
+    input[type="range"] { width:100%; min-height:32px; margin:0; accent-color:var(--accent); cursor:pointer; }
+    .compose-actions { margin:6px 0 14px; }
+    .toggle { min-height:44px; display:flex; align-items:center; gap:8px; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-size:.86rem; cursor:pointer; }
+    .toggle:has(input:not(:checked)) { color:var(--muted); background:transparent; }
+    .export-row { margin-top:10px; }
+    .small,.project-info p { color:var(--muted); line-height:1.5; font-size:.84rem; }
+    .main { display:grid; gap:16px; align-content:start; min-width:0; }
+    .hero,.library-panel,.timeline-panel,.pattern-details { padding:20px; min-width:0; }
+    .title-row,.panel-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+    .title-row h2 { font-size:1.4rem; }
+    .label { color:var(--muted); font-size:.78rem; margin-bottom:3px; }
+    .meta,.loop-meta { display:flex; flex-wrap:wrap; gap:8px 16px; font-size:.8rem; color:var(--muted); margin:8px 0 12px; }
+    .pill { border:1px solid var(--border); border-radius:8px; padding:4px 8px; color:var(--muted); font-size:.8rem; white-space:nowrap; }
+    canvas { display:block; width:100%; height:100px; background:#0e1522; border-radius:10px; }
+    .playhead { display:flex; justify-content:space-between; gap:12px; margin-top:10px; color:var(--muted); font-size:.78rem; font-variant-numeric:tabular-nums; }
+    .playhead strong { font-weight:500; color:var(--text); }
+    .save-current { display:grid; grid-template-columns:1fr auto; align-items:end; gap:10px; margin-top:12px; }
+    .save-current .field { margin:0; }
+    #clipStatus:empty { display:none; }
+    .saved-loops { display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr)); margin-top:14px; }
+    .empty-state { padding:14px; border-radius:10px; background:var(--panel-2); }
+    .loop-chip,.timeline-item { padding:14px; border:1px solid var(--border); border-radius:12px; min-width:0; background:#1d2538; }
+    .loop-top { display:flex; align-items:start; justify-content:space-between; gap:8px; }
+    .loop-name { font-weight:650; overflow-wrap:anywhere; }
+    .loop-actions { grid-template-columns:1fr 1fr; }
+    .loop-actions button:nth-child(2) { grid-column:1/-1; grid-row:1; background:#2c4149; border-color:#4a6d72; color:var(--accent); }
+    .timeline-dropzone { margin-top:14px; min-height:100px; border:1px dashed #657290; padding:12px; border-radius:12px; }
+    .timeline-dropzone.dragover { border-color:var(--accent); background:#243b3b; }
+    .timeline-items { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr)); gap:10px; }
+    .timeline-item { position:relative; }
+    .timeline-item > .loop-name { padding-right:32px; }
+    .timeline-item.playing { border-color:var(--accent); box-shadow:inset 3px 0 var(--accent); }
+    .timeline-order { position:absolute; top:14px; right:14px; color:var(--muted); font-size:.8rem; }
+    .timeline-actions button:first-child { grid-column:1/-1; }
+    .arrangement-footer { display:flex; align-items:center; gap:14px; justify-content:space-between; margin-top:10px; }
+    .arrangement-footer button { width:auto; flex:none; }
+    .pattern-details { padding-top:8px; padding-bottom:8px; }
+    .tracks { display:grid; gap:10px; margin-top:12px; }
+    .tracks > div { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:center; gap:8px; }
+    .tracks h3 { margin:0; font-size:.78rem; font-weight:500; color:var(--muted); }
+    .steps { display:grid; grid-template-columns:repeat(16,minmax(0,1fr)); gap:4px; }
+    .step { aspect-ratio:1/1; border-radius:3px; background:#293249; border:1px solid var(--border); }
+    .step.active { background:#477c71; }
+    .step.playing { outline:2px solid var(--accent-2); outline-offset:-2px; }
+    .tooltip { position:fixed; z-index:1000; max-width:min(280px,calc(100vw - 24px)); pointer-events:none; background:#090f1b; border:1px solid var(--border); color:var(--text); padding:10px 12px; border-radius:10px; font-size:.8rem; line-height:1.5; opacity:0; }
+    .tooltip.visible { opacity:1; }
+    .hidden,[hidden] { display:none !important; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media(max-width:900px) { body { padding:14px; } .app { grid-template-columns:300px minmax(0,1fr); gap:14px; } .studio-header { padding:18px; } .brand-mark { display:none; } .controls,.hero,.library-panel,.timeline-panel { padding:16px; } .arrangement-footer { flex-wrap:wrap; } }
+    @media(max-width:680px) { body { padding:10px; } .app { grid-template-columns:1fr; gap:12px; } .studio-header { grid-template-columns:1fr; gap:14px; padding:16px; } .brand-mark { display:grid; width:40px; height:40px; font-size:1.6rem; } h1 { font-size:1.4rem; } .brand p { font-size:.78rem; } .main { gap:12px; } .controls { order:2; } .main { display:contents; } .hero { order:1; } .library-panel { order:3; } .timeline-panel { order:4; } .pattern-details { order:5; } .field-grid { gap:10px; } .feedback-row { align-items:start; } .feedback-row:has(#projectStatus:empty) { justify-content:flex-end; } .mode-row { gap:12px; } .mode-row legend { margin-right:8px; } .history-actions button { padding:7px 11px; } .save-current { grid-template-columns:1fr; } .save-current button { justify-self:start; width:auto; } canvas { height:72px; } .brand p { max-width:27ch; } }
+    @media(prefers-reduced-motion:reduce) { * { scroll-behavior:auto !important; transition:none !important; } }
   </style>
 </head>
 <body>
   <div class="app">
-    <aside class="panel controls">
-      <h1>8-Bit Loop Generator</h1>
-
-
-      <div class="toolbar">
-        <button id="playBtn" data-tooltip="Starts playback. In Loop mode it repeats the current loop. In Timeline mode it plays the arranged clips in order.">▶ Play</button>
-        <button id="randomBtn" class="secondary" data-tooltip="Randomizes multiple musical settings at once for instant inspiration.">🎲 Randomize</button>
-        <button id="stopBtn" class="stop" data-tooltip="Stops playback and resets the transport to the beginning.">■ Stop</button>
-        <button id="rerollBtn" class="ghost" data-tooltip="Keeps the current parameter settings but generates a fresh pattern using a new seed.">↻ New Pattern</button>
+    <header class="panel studio-header">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">♫</span><div><h1>8-Bit Music</h1><p>A little loop. A whole world of possibilities.</p></div></div>
+      <div class="transport">
+        <fieldset class="mode-row"><legend>Hear</legend>
+          <label class="mode-chip"><input type="radio" name="playMode" value="loop" id="modeLoop" checked> This loop</label>
+          <label class="mode-chip"><input type="radio" name="playMode" value="timeline" id="modeTimeline"> Arrangement</label>
+        </fieldset>
+        <div class="toolbar">
+          <button id="playBtn" aria-describedby="transportHint">▶ Play loop</button>
+          <button id="stopBtn" class="ghost" disabled>■ Stop</button>
+        </div>
+        <p id="transportHint" class="small">Ready when you are. Press Play to hear your loop.</p>
       </div>
-
-      <div class="save-row" style="margin-top:10px">
-          <button id="undoProjectBtn" class="ghost" disabled>Undo</button>
-          <button id="redoProjectBtn" class="ghost" disabled>Redo</button>
-      </div>
-
+      <div class="feedback-row">
         <p id="projectStatus" class="small" role="status" aria-live="polite"></p>
-        <button id="keepProjectBtn" class="ghost" hidden>Keep this project</button>
-
-      <div class="section">
-        <h2>Mode</h2>
-        <div class="mode-row">
-          <label class="mode-chip" data-tooltip="Loop mode repeats the currently edited loop endlessly so you can audition and tweak it.">
-            <input type="radio" name="playMode" value="loop" id="modeLoop" checked>
-            Loop Mode
-          </label>
-          <label class="mode-chip" data-tooltip="Timeline mode plays saved clips from left to right according to the timeline arrangement.">
-            <input type="radio" name="playMode" value="timeline" id="modeTimeline">
-            Timeline Mode
-          </label>
-        </div>
+        <div class="history-actions"><button id="undoProjectBtn" class="ghost" disabled>Undo</button><button id="redoProjectBtn" class="ghost" disabled>Redo</button></div>
       </div>
-
-      <details class="section" id="savePanel">
-        <summary>Save & Export</summary>
-        <div class="field">
-          <label for="loopNameInput">Loop Name</label>
-          <input id="loopNameInput" maxlength="120" type="text" value="New Loop" placeholder="Give this loop a name" data-tooltip="Name used when saving the current loop into the clip library.">
-        </div>
-        <div class="save-row">
-          <button id="saveLoopBtn" class="secondary" data-tooltip="Saves the current pattern and all sound settings as a reusable loop clip in the library below.">💾 Save Loop</button>
-          <button id="clearTimelineBtn" class="ghost" data-tooltip="Removes every clip from the timeline arrangement without deleting your saved loop library.">Clear Timeline</button>
-        </div>
-        <div class="export-row" style="margin-top:10px;">
-          <button id="exportLoopBtn" class="warn" data-tooltip="Renders the current loop and downloads it as audio. This version exports WAV in-browser for reliability.">Export Loop</button>
-          <button id="exportTimelineBtn" class="warn" data-tooltip="Renders the entire arranged timeline and downloads it as audio. This version exports WAV in-browser for reliability.">Export Timeline</button>
-        </div>
-        <div class="save-row project-actions" style="margin-top:10px">
-          <button id="saveProjectBtn" class="secondary">Save project</button>
-          <button id="importProjectBtn" class="ghost">Open project</button>
-          <input id="projectFile" type="file" accept=".json,application/json" hidden>
-
-        </div>
-
-        <details class="project-info"><summary>Info</summary>
-          <p>Compose a loop, Save Loop, then Add clips to the arrangement. Load opens an independent editor copy. Use arrows or drag to reorder.</p>
-          <p>Undo/Redo restores library and arrangement actions, loop loads, layer variations, melody changes, New Pattern, Randomize and project imports. Playback stops when restoring. Shape one layer changes only the chosen layer and bar, preserving the chord progression and other layers. A little / Half / All replaces that fraction of the differing steps. The starting seed recreates the original full pattern; save a project to preserve variations. Keyboard: Ctrl/Command+Z; Shift+Z to redo outside text fields.</p>
-          <p>This browser autosaves the complete project. Save project downloads an editable JSON backup with the editor, sounds, actual notes, library and arrangement. Open project replaces the workspace; Undo restores it. Browser storage can be cleared, so keep a downloaded backup for important work.</p>
-          <p>WAV is a separate offline render, not a live recording: echo/crunch and exact percussion timbre differ. Exports are limited to ten minutes per file. Blue marks the current sixteenth note; green marks active notes. The transport follows each bar.</p>
-        </details>
-      </details>
-
+      <button id="keepProjectBtn" class="ghost" hidden>Keep this project</button>
+    </header>
+    <aside class="panel controls" aria-label="Loop editor">
       <div class="section">
-        <h2>Song</h2>
+        <h2>Make it yours</h2>
         <div class="field-grid">
           <div class="field">
             <label for="keySelect">Key</label>
-            <select id="keySelect" data-tooltip="Sets the tonal center. Changing the key transposes the generated notes to a different root note."></select>
+            <select id="keySelect" data-tooltip="Changes the tonal center and composes a new pattern. Undo restores your previous notes."></select>
           </div>
           <div class="field">
             <label for="scaleSelect">Scale</label>
@@ -617,24 +166,21 @@
             </select>
           </div>
           <div class="field">
-            <label for="tempoRange">Speed <span class="value" id="tempoValue"></span></label>
+            <label for="tempoRange">Tempo <span class="value" id="tempoValue"></span></label>
             <input id="tempoRange" type="range" min="70" max="190" step="1" value="120" data-tooltip="Sets the tempo in BPM. Higher values make the loop feel more energetic and compressed in time.">
           </div>
           <div class="field">
-            <label for="barsRange">Loop Bars <span class="value" id="barsValue"></span></label>
+            <label for="barsRange">Length · bars <span class="value" id="barsValue"></span></label>
             <input id="barsRange" type="range" min="1" max="8" step="1" value="4" data-tooltip="Controls how many bars long the generated loop is before it repeats.">
           </div>
-          <div class="field">
-            <label for="swingRange">Swing <span class="value" id="swingValue"></span></label>
-            <input id="swingRange" type="range" min="0" max="0.35" step="0.01" value="0.08" data-tooltip="Delays every other 16th note slightly, creating a groovier and less mechanical rhythm.">
-          </div>
-          <div class="field">
-            <label for="seedInput">Seed</label>
-            <input id="seedInput" type="number" min="1" max="999999" step="1" value="4312" data-tooltip="Starting seed for a full pattern. Layer variations are kept as actual notes in project backups and saved clips.">
-          </div>
+
         </div>
       </div>
 
+      <div class="compose-actions">
+        <button id="rerollBtn" class="secondary">New pattern<span>Same settings, fresh notes</span></button>
+        <button id="randomBtn" class="ghost">Surprise me<span>New settings and notes</span></button>
+      </div>
       <details class="section" id="variationPanel">
         <summary>Shape one layer</summary>
         <div class="field-grid">
@@ -653,8 +199,16 @@
       </details>
 
       <details class="section">
-        <summary>Melody</summary>
+        <summary>Melody & rhythm</summary>
         <div class="field-grid">
+          <div class="field">
+            <label for="swingRange">Swing <span class="value" id="swingValue"></span></label>
+            <input id="swingRange" type="range" min="0" max="0.35" step="0.01" value="0.08" data-tooltip="Delays every other 16th note slightly, creating a groovier and less mechanical rhythm.">
+          </div>
+          <div class="field">
+            <label for="seedInput">Seed</label>
+            <input id="seedInput" type="number" min="1" max="999999" step="1" value="4312" data-tooltip="Starting seed for a full pattern. Layer variations are kept as actual notes in project backups and saved clips.">
+          </div>
           <div class="field">
             <label for="densityRange">Note Density <span class="value" id="densityValue"></span></label>
             <input id="densityRange" type="range" min="0.2" max="1" step="0.01" value="0.68" data-tooltip="Controls how often melody notes occur. Higher density creates busier melodic lines.">
@@ -664,11 +218,11 @@
             <input id="variationRange" type="range" min="0" max="1" step="0.01" value="0.46" data-tooltip="Increases melodic surprises, rhythmic changes, and less predictable bass and drum decisions.">
           </div>
           <div class="field">
-            <label for="octaveRange">Lead Octave <span class="value" id="octaveValue"></span></label>
+            <label for="octaveRange">Lead register <span class="value" id="octaveValue"></span></label>
             <input id="octaveRange" type="range" min="3" max="6" step="1" value="4" data-tooltip="Moves the melody register up or down. Lower octaves sound weightier, higher octaves sound more piercing.">
           </div>
           <div class="field">
-            <label for="arpRange">Arpeggio Bias <span class="value" id="arpValue"></span></label>
+            <label for="arpRange">Chord tones <span class="value" id="arpValue"></span></label>
             <input id="arpRange" type="range" min="0" max="1" step="0.01" value="0.42" data-tooltip="Higher values make the lead line favor chord tones and arpeggio-like note choices.">
           </div>
         </div>
@@ -678,7 +232,7 @@
         <summary>Sound</summary>
         <div class="field-grid">
           <div class="field">
-            <label for="leadWaveSelect">Lead Wave</label>
+            <label for="leadWaveSelect">Lead tone</label>
             <select id="leadWaveSelect" data-tooltip="Chooses the oscillator shape for the lead voice. Square is classic chiptune, triangle is softer, saw is brighter.">
               <option value="square">Square</option>
               <option value="sawtooth">Sawtooth</option>
@@ -686,7 +240,7 @@
             </select>
           </div>
           <div class="field">
-            <label for="bassWaveSelect">Bass Wave</label>
+            <label for="bassWaveSelect">Bass tone</label>
             <select id="bassWaveSelect" data-tooltip="Chooses the oscillator shape for the bass voice and changes its tone and bite.">
               <option value="square">Square</option>
               <option value="triangle" selected>Triangle</option>
@@ -705,7 +259,7 @@
       </details>
 
       <div class="section">
-        <h2>Tracks</h2>
+        <h2>Layers · tap to mute</h2>
         <div class="toggles">
           <label class="toggle" data-tooltip="Enables or disables the lead melody track."><input id="leadToggle" type="checkbox" checked> Lead</label>
           <label class="toggle" data-tooltip="Enables or disables the bass track."><input id="bassToggle" type="checkbox" checked> Bass</label>
@@ -713,98 +267,58 @@
           <label class="toggle" data-tooltip="Enables or disables background harmony notes and pads."><input id="harmonyToggle" type="checkbox" checked> Harmony</label>
         </div>
       </div>
+
+      <details class="section" id="savePanel">
+        <summary>Project & downloads</summary>
+        <p id="autosaveStatus" class="small">Your work stays in this browser. Download a backup to keep it.</p>
+        <div class="save-row project-actions">
+          <button id="saveProjectBtn" class="secondary">Download project</button>
+          <button id="importProjectBtn" class="ghost">Open project</button>
+          <input id="projectFile" type="file" accept=".json,application/json" hidden>
+        </div>
+        <div class="export-row">
+          <button id="exportLoopBtn" class="ghost">Loop WAV</button>
+          <button id="exportTimelineBtn" class="ghost">Arrangement WAV</button>
+        </div>
+        <p class="small">WAV uses a separate render; live echo, crunch and drum timbre differ.</p>
+      </details>
+        <details class="section project-info"><summary>How it works</summary>
+          <p>Press Play to hear the starting loop. Make a new pattern, or shape one layer. Save loop keeps a snapshot; Add to arrangement places it in your song. Edit copy opens a separate editor copy. Use arrows or drag to reorder.</p>
+          <p>Undo/Redo restores library and arrangement actions, loop loads, layer variations, melody changes, New pattern, Surprise me and project imports. Playback stops when restoring. Key, scale, length, seed and melody settings compose fresh notes. Tempo, swing, sound and layer switches keep the notes. Shape one layer changes only the chosen layer and bar, preserving the chord progression and other layers. A little / Half / All replaces that fraction of the differing steps. The starting seed recreates the original full pattern; save a project to preserve variations. Keyboard: Ctrl/Command+Z; Shift+Z to redo outside text fields.</p>
+          <p>This browser autosaves the complete project. Download project downloads an editable JSON backup with the editor, sounds, actual notes, library and arrangement. Open project replaces the workspace; Undo restores it. Browser storage can be cleared, so keep a downloaded backup for important work.</p>
+          <p>WAV is a separate offline render, not a live recording: echo/crunch and exact percussion timbre differ. Exports are limited to ten minutes per file. Blue marks the current sixteenth note; green marks active notes. The transport follows each bar.</p>
+        </details>
     </aside>
-
     <main class="main">
-      <section class="panel hero">
-        <div class="card now-playing">
-          <span class="kicker">Live Chiptune Engine</span>
-          <div class="title-row">
-            <h2 id="songTitle">C Minor Loop</h2>
-            <div class="pill" id="playState">Stopped</div>
-          </div>
-          <div class="meta">
-            <span class="pill" id="metaTempo">120 BPM</span>
-            <span class="pill" id="metaBars">4 Bars</span>
-            <span class="pill" id="metaScale">Minor</span>
-            <span class="pill" id="metaSeed">Seed 4312</span>
-            <span class="pill" id="metaMode">Loop Mode</span>
-          </div>
-          <div class="small" id="loopSummary">Retro loop with syncopated lead, root-heavy bass, and a simple drum groove.</div>
-        </div>
-
-        <div class="card visualizer-wrap">
-          <div class="label">Output Visualizer</div>
-          <canvas id="viz" width="720" height="180"></canvas>
-
-        </div>
+      <section class="panel hero" aria-labelledby="songTitle">
+        <div class="title-row"><div><div class="label" id="previewLabel">Your loop</div><h2 id="songTitle">C Minor Loop</h2></div><span id="playState" class="pill">Ready</span></div>
+        <div class="meta"><span id="metaTempo">120 BPM</span><span id="metaBars">4 bars</span><span id="metaMode">This loop</span></div>
+        <canvas id="viz" width="720" height="120" aria-label="Audio waveform" role="img"></canvas>
+        <div class="playhead"><span>Bar <strong id="currentBar">1 / 4</strong></span><span>Step <strong id="currentStep">1 / 16</strong></span></div>
+        <div class="tracks"><div><h3>Lead</h3><div class="steps" id="leadSteps"></div></div><div><h3>Bass</h3><div class="steps" id="bassSteps"></div></div><div><h3>Drums</h3><div class="steps" id="drumSteps"></div></div></div>
       </section>
-
-      <section class="status-grid">
-        <div class="panel status-card">
-          <div class="label">Current Bar</div>
-          <div class="big" id="currentBar">1 / 4</div>
-
-        </div>
-        <div class="panel status-card">
-          <div class="label">Step</div>
-          <div class="big" id="currentStep">1 / 16</div>
-
-        </div>
-        <div class="panel status-card">
-          <div class="label">Mood</div>
-          <div class="big" id="moodLabel">Bouncy</div>
-          <div class="small" id="moodDetail">Square-wave lead with moderate swing and medium variation.</div>
-        </div>
-        <div class="panel status-card">
-          <div class="label">Timeline Clips</div>
-          <div class="big" id="timelineCount">0</div>
-
-        </div>
-      </section>
-
-      <section class="panel library-panel">
-        <div class="panel-head">
-          <div>
-            <div class="label">Saved Loop Library</div>
-
-          </div>
-        </div>
+      <section class="panel library-panel" aria-labelledby="libraryHeading">
+        <div class="panel-head"><h2 id="libraryHeading">Keep a good loop</h2><span class="small">Saved clips</span></div>
+        <div class="save-current"><div class="field"><label for="loopNameInput">Loop name</label><input id="loopNameInput" maxlength="120" type="text" value="New Loop" placeholder="Give this loop a name"></div><button id="saveLoopBtn" class="secondary">Save loop</button></div>
+        <p id="clipStatus" class="small" role="status"></p>
         <div id="savedLoops" class="saved-loops"></div>
       </section>
-
-      <section class="panel timeline-panel">
-        <div class="panel-head">
-          <div>
-            <div class="label">Timeline Arranger</div>
-
-          </div>
-          <div class="pill" id="timelineDuration">0.0s total</div>
-        </div>
-        <div id="timelineDropzone" class="timeline-dropzone" data-tooltip="Add or drop saved loops here. Reorder clips with their arrows or drag; playback follows the numbered order.">
-          <div id="timelineEmpty" class="small">Use Add on a saved loop, or drop one here.</div>
+      <section class="panel timeline-panel" aria-labelledby="arrangementHeading">
+        <div class="panel-head"><h2 id="arrangementHeading">Build an arrangement</h2><span class="small"><span id="timelineCount">0 clips</span> · <span id="timelineDuration">0.0s total</span></span></div>
+        <div id="timelineDropzone" class="timeline-dropzone">
+          <div id="timelineEmpty" class="small">Save a loop above, then choose Add to arrangement. Repeat, reorder, make it yours.</div>
           <div id="timelineItems" class="timeline-items"></div>
         </div>
+        <div class="arrangement-footer"><p class="small">Clips play in order, then repeat. Editing a copy keeps saved clips intact.</p><button id="clearTimelineBtn" class="ghost" disabled>Clear arrangement</button></div>
       </section>
-
-      <section class="panel tracks">
-        <div class="card">
-          <h3>Lead</h3>
-          <div class="steps" id="leadSteps"></div>
-        </div>
-        <div class="card">
-          <h3>Bass</h3>
-          <div class="steps" id="bassSteps"></div>
-        </div>
-        <div class="card">
-          <h3>Drums</h3>
-          <div class="steps" id="drumSteps"></div>
-        </div>
-      </section>
+      <details class="panel pattern-details">
+        <summary>Inside the pattern</summary>
+        <div class="meta"><span id="metaScale">Minor</span><span id="metaSeed">Seed 4312</span><span id="moodLabel">Bouncy</span></div>
+        <p class="small" id="moodDetail"></p><p class="small" id="loopSummary"></p>
+      </details>
     </main>
   </div>
-
-  <div id="tooltip" class="tooltip"></div>
+  <div id="tooltip" class="tooltip" role="tooltip"></div>
 
   <script src="project-state.js"></script>
   <script src="pattern-tools.js"></script>
@@ -878,6 +392,7 @@
       loop: null,
       playMode: "loop",
       isPlaying: false,
+      isStarting: false,
       audio: null,
       stepIndex: 0,
       nextStepTime: 0,
@@ -931,8 +446,8 @@
         const previous = localStorage.getItem(PROJECT_STORE);
         if (previous) { try { MusicProject.parse(previous,Object.keys(SCALES)); localStorage.setItem(PROJECT_BACKUP,previous); } catch {} }
         localStorage.setItem(PROJECT_STORE, text); lastSaved = text;
-        projectStatus('Saved in this browser.');
-      } catch (error) { projectStatus('Autosave unavailable. Save project to keep a JSON backup. ' + error.message, true); }
+        ui.autosaveStatus.textContent = 'Saved in this browser. Download a project backup for safekeeping.';
+      } catch (error) { projectStatus('Autosave unavailable. Open Project & downloads to keep a backup. ' + error.message, true); }
     }
     function scheduleProjectSave() {
       ui.undoProjectBtn.disabled = !projectHistory.past.length;
@@ -950,7 +465,7 @@
         autosaveAllowed = false; ui.keepProjectBtn.hidden = false;
         let recovered = false;
         try { const raw = localStorage.getItem(PROJECT_BACKUP); if (raw) { applyProject(MusicProject.parse(raw,Object.keys(SCALES))); recovered = true; } } catch {}
-        projectStatus((recovered ? 'Recovered the previous draft.' : 'Could not open the saved draft.') + ' Original storage is preserved. Save project for a backup, then choose Keep this project to resume autosave.', true);
+        projectStatus((recovered ? 'Recovered the previous draft.' : 'Could not open the saved draft.') + ' Original storage is preserved. Open Project & downloads for a backup, then choose Keep this project to resume autosave.', true);
       }
     }
     const midiToFreq = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -1245,6 +760,35 @@
       return state.timeline.reduce((s, c) => s + c.loop.totalSteps * (60 / c.params.tempo / 4), 0);
     }
 
+    function previewClip() {
+      return state.playMode === 'timeline' ? state.timeline[state.isPlaying ? state.activeTimelineClipIndex : 0] : {params:state.params,loop:state.loop};
+    }
+
+    function refreshPreview(clip = previewClip()) {
+      const p = clip?.params;
+      ui.previewLabel.textContent = state.playMode === 'timeline' ? 'Arrangement preview' : 'Your loop';
+      ui.songTitle.textContent = p ? (state.playMode === 'timeline' ? clip.name : `${p.key} ${prettyScaleName(p.scale)} loop`) : 'Your song starts here';
+      ui.metaTempo.textContent = p ? `${p.tempo} BPM` : 'Add your first clip';
+      ui.metaBars.textContent = p ? `${p.bars} ${p.bars === 1 ? 'bar' : 'bars'}` : '';
+      ui.metaMode.textContent = state.playMode === 'timeline' ? 'Arrangement' : 'This loop';
+      if (!state.isPlaying) {
+        ui.currentBar.textContent = p ? `1 / ${p.bars}` : '—';
+        ui.currentStep.textContent = p ? '1 / 16' : '—';
+      }
+    }
+
+    function updatePlaybackControls() {
+      const empty = state.playMode === 'timeline' && !state.timeline.length;
+      const silent = state.playMode === 'loop' && !['leadOn','bassOn','drumsOn','harmonyOn'].some(key => state.params[key]);
+      ui.playBtn.textContent = state.isStarting ? 'Starting…' : state.isPlaying ? 'Playing' : state.playMode === 'timeline' ? '▶ Play arrangement' : '▶ Play loop';
+      ui.playBtn.disabled = empty || state.isPlaying || state.isStarting;
+      ui.stopBtn.disabled = !state.isPlaying && !state.isStarting;
+      ui.playState.textContent = state.isStarting ? 'Starting' : state.isPlaying ? 'Playing' : 'Ready';
+      ui.transportHint.textContent = empty ? 'Save a loop, then Add to arrangement to hear a song.' : silent ? 'All layers are muted. Turn on a layer in the loop editor.' : state.playMode === 'timeline' ? 'Saved clips play in order. Choose This loop to hear editor changes.' : state.isPlaying ? 'Your loop repeats. Shape it while it plays, or Stop anytime.' : 'Ready when you are. Press Play to hear your loop.';
+      ui.clearTimelineBtn.disabled = !state.timeline.length;
+      ui.exportTimelineBtn.disabled = !state.timeline.length;
+    }
+
     function refreshUI() {
       const p = state.params;
       ui.tempoValue.textContent = `${p.tempo} BPM`;
@@ -1257,22 +801,20 @@
       ui.echoValue.textContent = `${Math.round(p.echo * 100)}%`;
       ui.bitcrushValue.textContent = `${Math.round(p.crunch * 100)}%`;
 
-      ui.songTitle.textContent = `${p.key} ${prettyScaleName(p.scale)} Loop`;
-      ui.metaTempo.textContent = `${p.tempo} BPM`;
-      ui.metaBars.textContent = `${p.bars} ${p.bars === 1 ? "Bar" : "Bars"}`;
       ui.metaScale.textContent = prettyScaleName(p.scale);
       ui.metaSeed.textContent = `Seed ${p.seed}`;
-      ui.metaMode.textContent = state.playMode === "loop" ? "Loop Mode" : "Timeline Mode";
 
       const moods = describeMood();
       ui.moodLabel.textContent = (moods[1] || "retro").replace(/^./, m => m.toUpperCase());
       ui.moodDetail.textContent = `${p.leadWave[0].toUpperCase() + p.leadWave.slice(1)} lead with ${Math.round(p.swing * 100)}% swing and ${Math.round(p.variation * 100)}% variation.`;
       ui.loopSummary.textContent = `Generated ${p.key} ${prettyScaleName(p.scale)} loop with ${p.leadOn ? "lead" : "no lead"}, ${p.bassOn ? "bass" : "no bass"}, ${p.drumsOn ? "drums" : "no drums"}, and ${p.harmonyOn ? "harmony pads" : "no harmony"}.`;
-      ui.timelineCount.textContent = String(state.timeline.length);
+      ui.timelineCount.textContent = `${state.timeline.length} ${state.timeline.length === 1 ? 'clip' : 'clips'}`;
       ui.timelineDuration.textContent = `${getTimelineDurationSeconds().toFixed(1)}s total`;
 
       updateVariationChoices();
-      renderStepGrids(state.loop);
+      refreshPreview();
+      updatePlaybackControls();
+      renderStepGrids(previewClip()?.loop);
       renderLibrary();
       renderTimeline();
       scheduleProjectSave();
@@ -1314,7 +856,7 @@
       state.loop = result.loop; state.transportVisual = null;
       refreshUI();
       const location = bar < 0 ? 'whole loop' : `bar ${bar + 1}`;
-      ui.variationStatus.textContent = `${result.changed} ${track} ${result.changed === 1 ? 'step' : 'steps'} changed · ${location}. Undo to compare.${state.params[track + 'On'] ? '' : ' Turn this layer on to hear it.'}${state.playMode === 'timeline' ? ' Choose Loop Mode to hear this edit.' : ''}`;
+      ui.variationStatus.textContent = `${result.changed} ${track} ${result.changed === 1 ? 'step' : 'steps'} changed · ${location}. Undo to compare.${state.params[track + 'On'] ? '' : ' Turn this layer on to hear it.'}${state.playMode === 'timeline' ? ' Choose This loop to hear this edit.' : ''}`;
     }
 
     function randomizeSettings() {
@@ -1354,6 +896,7 @@
       state.loop = loop;
       state.savedLoops.unshift({ id: uid("loop"), name, params: clone(state.params), loop: clone(loop) });
       refreshUI();
+      ui.clipStatus.textContent = `Saved “${name}”. Add it to your arrangement below.`;
     }
 
     function loadLoop(id) {
@@ -1363,18 +906,23 @@
       state.params = clone(item.params);
       state.loop = clone(item.loop);
       ui.loopNameInput.value = item.name;
+      state.playMode = 'loop';
       stopPlayback();
       syncInputs();
       refreshUI();
+      projectStatus(`Editing a copy of “${item.name}”. Save loop to keep a new version.`);
+      ui.keySelect.focus();
     }
 
     function duplicateToTimeline(id) {
       const item = state.savedLoops.find(x => x.id === id);
       if (!item) return;
-      if (state.timeline.length >= MusicProject.MAX_CLIPS) { projectStatus('The timeline holds 64 clips. Remove a clip first.', true); return; }
+      if (state.timeline.length >= MusicProject.MAX_CLIPS) { projectStatus('The arrangement holds 64 clips. Remove a clip first.', true); return; }
       rememberProject();
       state.timeline.push({ ...clone(item), id: uid("clip") });
       refreshUI();
+      ui.clipStatus.textContent = `Added “${item.name}” · ${state.timeline.length} ${state.timeline.length === 1 ? 'clip' : 'clips'} in your arrangement.`;
+      ui.savedLoops.querySelector(`[data-loop-id="${id}"] button:nth-child(2)`)?.focus({preventScroll:true});
     }
 
     function removeTimelineItem(id) {
@@ -1406,10 +954,26 @@
       (preferred && !preferred.disabled ? preferred : fallback)?.focus({preventScroll:true});
     }
 
+    function preserveClipFocus(container, attribute) {
+      const active = document.activeElement;
+      const card = active?.closest(`[${attribute}]`);
+      if (!card || !container.contains(card)) return () => {};
+      const id = card.getAttribute(attribute), index = [...container.children].indexOf(card);
+      const buttonIndex = [...card.querySelectorAll('button')].indexOf(active);
+      return () => {
+        const replacement = container.querySelector(`[${attribute}="${id}"]`) || container.children[Math.min(index,container.children.length-1)];
+        const buttons = replacement?.querySelectorAll('button') || [];
+        const preferred = buttons[buttonIndex];
+        (preferred && !preferred.disabled ? preferred : [...buttons].find(button => !button.disabled) || ui.undoProjectBtn).focus({preventScroll:true});
+      };
+    }
+
     function renderLibrary() {
+      const restoreFocus = preserveClipFocus(ui.savedLoops,'data-loop-id');
       ui.savedLoops.innerHTML = "";
       if (!state.savedLoops.length) {
-        ui.savedLoops.innerHTML = '<div class="small">No saved loops yet. Save the current loop to build a reusable clip library.</div>';
+        ui.savedLoops.innerHTML = '<div class="small empty-state">Like what you hear? Name it and Save loop above. Your first clip is one click away.</div>';
+        restoreFocus();
         return;
       }
 
@@ -1419,7 +983,6 @@
         card.className = "loop-chip";
         card.draggable = true;
         card.dataset.loopId = loop.id;
-        card.dataset.tooltip = "Drag this saved loop onto the timeline. You can also load it back into the editor or add it with one click.";
         card.innerHTML = `
           <div class="loop-top">
             <div>
@@ -1430,12 +993,10 @@
           </div>
           <div class="loop-meta">
             <span class="pill">${duration}s</span>
-            <span class="pill">${loop.params.leadWave}</span>
-            <span class="pill">seed ${loop.params.seed}</span>
           </div>
           <div class="loop-actions">
-            <button class="secondary">Load</button>
-            <button class="ghost">Add</button>
+            <button class="ghost">Edit copy</button>
+            <button class="ghost">Add to arrangement</button>
             <button class="stop">Remove</button>
           </div>
         `;
@@ -1443,14 +1004,16 @@
         const [loadBtn, addBtn, deleteBtn] = card.querySelectorAll("button");
         loadBtn.onclick = () => loadLoop(loop.id);
         addBtn.onclick = () => duplicateToTimeline(loop.id);
-        deleteBtn.onclick = () => { rememberProject(); state.savedLoops = state.savedLoops.filter(item => item.id !== loop.id); refreshUI(); projectStatus('Removed from the library. Timeline copies are unchanged.'); ui.undoProjectBtn.focus(); };
+        deleteBtn.onclick = () => { rememberProject(); state.savedLoops = state.savedLoops.filter(item => item.id !== loop.id); refreshUI(); projectStatus('Removed from saved clips. Arrangement copies are unchanged. Undo restores it.'); ui.undoProjectBtn.focus(); };
         card.addEventListener("dragstart", () => { state.draggedLoopId = loop.id; });
         card.addEventListener("dragend", () => { state.draggedLoopId = null; });
         ui.savedLoops.appendChild(card);
       });
+      restoreFocus();
     }
 
     function renderTimeline() {
+      const restoreFocus = preserveClipFocus(ui.timelineItems,'data-timeline-id');
       ui.timelineItems.innerHTML = "";
       ui.timelineEmpty.classList.toggle("hidden", state.timeline.length > 0);
 
@@ -1459,7 +1022,6 @@
         item.className = "timeline-item" + (state.isPlaying && state.playMode === "timeline" && index === state.activeTimelineClipIndex ? " playing" : "");
         item.draggable = true;
         item.dataset.timelineId = clip.id;
-        item.dataset.tooltip = "Reorder this clip with its arrows or drag. Remove it to shorten the song.";
         item.innerHTML = `
           <div class="timeline-order">#${index + 1}</div>
           <div class="loop-name"></div>
@@ -1469,7 +1031,7 @@
             <span class="pill">${clip.params.bars} bars</span>
           </div>
           <div class="timeline-actions">
-            <button class="secondary">Load copy</button>
+            <button class="ghost">Edit copy</button>
             <button class="ghost">Copy</button>
             <button class="stop">Remove</button>
             <button class="ghost" data-move="-1" aria-label="Move clip earlier">↑</button>
@@ -1492,9 +1054,11 @@
           stopPlayback();
           syncInputs();
           refreshUI();
+          projectStatus(`Editing a copy of “${clip.name}”. Save loop to keep a new version.`);
+          ui.keySelect.focus();
         };
         copyBtn.onclick = () => {
-          if (state.timeline.length >= MusicProject.MAX_CLIPS) { projectStatus('The timeline holds 64 clips. Remove a clip first.', true); return; }
+          if (state.timeline.length >= MusicProject.MAX_CLIPS) { projectStatus('The arrangement holds 64 clips. Remove a clip first.', true); return; }
           rememberProject();
           state.timeline.splice(index + 1, 0, { ...clone(clip), id: uid("clip") });
           refreshUI();
@@ -1511,6 +1075,7 @@
 
         ui.timelineItems.appendChild(item);
       });
+      restoreFocus();
     }
 
     ui.timelineDropzone.addEventListener("dragover", e => {
@@ -1681,8 +1246,9 @@
       state.currentStepInBar = localStep % 16;
       ui.currentBar.textContent = `${state.currentBar + 1} / ${clip.params.bars}`;
       ui.currentStep.textContent = `${state.currentStepInBar + 1} / 16`;
+      refreshPreview(clip);
       renderStepGrids(clip.loop);
-      renderTimeline();
+      if (!previous || previous.clipIndex !== clipIndex) renderTimeline();
     }
 
     function startTransportLoop() {
@@ -1694,17 +1260,23 @@
     }
 
     async function startPlayback() {
+      if (state.isPlaying || state.isStarting) return;
       const request = ++playRequest;
       readInputs();
       if (state.playMode === "timeline" && !state.timeline.length) {
-        projectStatus('Add a saved loop to the timeline, or choose Loop Mode.', true);
+        projectStatus('Add a saved loop to the arrangement, or choose This loop.', true);
         return;
       }
+      state.isStarting = true;
+      updatePlaybackControls();
       try {
         initAudio();
         if (state.audio.ctx.state === "suspended") await state.audio.ctx.resume();
       } catch (error) {
-        if (request === playRequest) projectStatus('Could not start sound. Try Play again. ' + error.message, true);
+        if (request === playRequest) {
+          state.isStarting = false; updatePlaybackControls();
+          projectStatus('Could not start sound. Try Play again. ' + error.message, true);
+        }
         return;
       }
 
@@ -1713,6 +1285,7 @@
       if (state.isPlaying) return;
 
       state.audio.master.gain.setValueAtTime(.72, state.audio.ctx.currentTime);
+      state.isStarting = false;
       state.isPlaying = true;
       state.stepIndex = 0;
       state.currentBar = 0;
@@ -1720,7 +1293,7 @@
       state.activeTimelineClipIndex = 0;
       state.nextStepTime = state.audio.ctx.currentTime + 0.05;
       startTransportLoop();
-      ui.playState.textContent = state.playMode === "loop" ? "Playing Loop" : "Playing Timeline";
+      updatePlaybackControls();
     }
 
     function stopPlayback() {
@@ -1728,16 +1301,16 @@
       silenceAudio();
       state.transportVisual = null;
       state.isPlaying = false;
+      state.isStarting = false;
       if (state.intervalId) clearInterval(state.intervalId);
       state.intervalId = null;
       state.stepIndex = 0;
       state.currentBar = 0;
       state.currentStepInBar = 0;
       state.activeTimelineClipIndex = 0;
-      ui.playState.textContent = "Stopped";
-      ui.currentBar.textContent = `1 / ${state.params.bars}`;
-      ui.currentStep.textContent = "1 / 16";
-      renderStepGrids(state.loop);
+      updatePlaybackControls();
+      refreshPreview();
+      renderStepGrids(previewClip()?.loop);
       renderTimeline();
     }
 
@@ -1779,7 +1352,10 @@
     }
 
     function renderStepGrids(loopObj) {
-      if (!loopObj) return;
+      if (!loopObj) {
+        for (const grid of [ui.leadSteps,ui.bassSteps,ui.drumSteps]) grid.replaceChildren();
+        return;
+      }
       renderStepGrid(ui.leadSteps, loopObj.lead, "lead");
       renderStepGrid(ui.bassSteps, loopObj.bass, "bass");
       renderStepGrid(ui.drumSteps, loopObj.drums, "drums");
@@ -1941,7 +1517,7 @@
 
     function exportTimeline() {
       if (!state.timeline.length) {
-        alert("Add at least one clip to the timeline before exporting it.");
+        projectStatus('Add a saved loop to the arrangement before downloading its WAV.', true);
         return;
       }
       downloadBlob(renderSequenceOffline(state.timeline), "timeline_arrangement.wav");
@@ -1949,26 +1525,34 @@
 
     function bindTooltips() {
       const tooltip = ui.tooltip;
-
-      document.addEventListener("mousemove", e => {
-        if (tooltip.classList.contains("visible")) {
-          tooltip.style.left = `${e.clientX + 14}px`;
-          tooltip.style.top = `${e.clientY + 14}px`;
-        }
+      document.querySelectorAll('[data-tooltip]').forEach((target,index) => {
+        const description = document.createElement('span');
+        description.id = `help-${index}`; description.className = 'sr-only';
+        description.textContent = target.dataset.tooltip; document.body.appendChild(description);
+        const control = target.matches('input,select,button') ? target : target.querySelector('input,select,button');
+        control?.setAttribute('aria-describedby',description.id);
       });
-
+      function show(target) {
+        const rect = target.getBoundingClientRect();
+        tooltip.textContent = target.dataset.tooltip;
+        tooltip.classList.add('visible');
+        tooltip.style.left = `${Math.max(12,Math.min(rect.left,innerWidth-tooltip.offsetWidth-12))}px`;
+        tooltip.style.top = `${Math.max(12,Math.min(rect.bottom+8,innerHeight-tooltip.offsetHeight-12))}px`;
+      }
+      function hide() { tooltip.classList.remove('visible'); }
       document.addEventListener("mouseover", e => {
         const target = e.target.closest("[data-tooltip]");
-        if (!target) return;
-        tooltip.textContent = target.dataset.tooltip;
-        tooltip.classList.add("visible");
-        tooltip.style.left = `${e.clientX + 14}px`;
-        tooltip.style.top = `${e.clientY + 14}px`;
+        if (target && matchMedia('(hover:hover)').matches) show(target);
       });
-
-      document.addEventListener("mouseout", e => {
-        if (e.target.closest("[data-tooltip]")) tooltip.classList.remove("visible");
+      document.addEventListener('focusin', e => {
+        const target = e.target.closest('[data-tooltip]');
+        if (target && e.target.matches(':focus-visible')) show(target);
       });
+      document.addEventListener('mouseout',hide);
+      document.addEventListener('focusout',hide);
+      document.addEventListener('keydown',e => { if (e.key === 'Escape') hide(); });
+      window.addEventListener('scroll',hide,true);
+      window.addEventListener('resize',hide);
     }
 
     function bindEvents() {
