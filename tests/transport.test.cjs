@@ -41,7 +41,7 @@ test('clear timeline stops its transport but preserves loop-mode playback',()=>{
 });
 test('library and timeline names are text, even when they contain HTML',()=>{
   const rendered=[];const name='<img src=x onerror=alert(1)>';
-  const node=()=>{const label={};const element={dataset:{},querySelector:()=>label,querySelectorAll:()=>[{}, {}, {}, {}, {}],addEventListener(){}};rendered.push({element,label});return element;};
+  const node=()=>{const label={};const element={dataset:{},querySelector:()=>label,querySelectorAll:()=>Array.from({length:6},()=>({setAttribute(){}})),addEventListener(){}};rendered.push({element,label});return element;};
   const clip={id:'one',name,params:{tempo:120,bars:1,key:'C',scale:'major',leadWave:'square',seed:1},loop:{totalSteps:16}};
   const context=vm.createContext({state:{savedLoops:[clip],timeline:[clip]},ui:{savedLoops:{appendChild(){}},timelineItems:{appendChild(){}},timelineEmpty:{classList:{toggle(){}}}},document:{createElement:node},prettyScaleName:x=>x});
   vm.runInContext(html.slice(html.indexOf('    function preserveClipFocus('),html.indexOf('    ui.timelineDropzone.addEventListener')),context);

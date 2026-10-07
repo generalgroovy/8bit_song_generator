@@ -81,7 +81,6 @@
     .timeline-item > .loop-name { padding-right:32px; }
     .timeline-item.playing { border-color:var(--accent); box-shadow:inset 3px 0 var(--accent); }
     .timeline-order { position:absolute; top:14px; right:14px; color:var(--muted); font-size:.8rem; }
-    .timeline-actions button:first-child { grid-column:1/-1; }
     .arrangement-footer { display:flex; align-items:center; gap:14px; justify-content:space-between; margin-top:10px; }
     .arrangement-footer button { width:auto; flex:none; }
     .pattern-details { padding-top:8px; padding-bottom:8px; }
@@ -310,7 +309,7 @@
           <div id="timelineEmpty" class="small">Save a loop above, then choose Add to arrangement. Repeat, reorder, make it yours.</div>
           <div id="timelineItems" class="timeline-items"></div>
         </div>
-        <div class="arrangement-footer"><p class="small">Clips play in order, then repeat. Editing a copy keeps saved clips intact.</p><button id="clearTimelineBtn" class="ghost" disabled>Clear arrangement</button></div>
+        <div class="arrangement-footer"><p class="small">Play from any clip to hear it in context. Playback continues in order, then repeats. Editing a copy keeps saved clips intact.</p><button id="clearTimelineBtn" class="ghost" disabled>Clear arrangement</button></div>
       </section>
       <details class="panel pattern-details">
         <summary>Inside the pattern</summary>
@@ -762,7 +761,7 @@
     }
 
     function previewClip() {
-      return state.playMode === 'timeline' ? state.timeline[state.isPlaying ? state.activeTimelineClipIndex : 0] : {params:state.params,loop:state.loop};
+      return state.playMode === 'timeline' ? state.timeline[state.isPlaying || state.isStarting ? state.activeTimelineClipIndex : 0] : {params:state.params,loop:state.loop};
     }
 
     function refreshPreview(clip = previewClip()) {
@@ -785,7 +784,7 @@
       ui.playBtn.disabled = empty || state.isPlaying || state.isStarting;
       ui.stopBtn.disabled = !state.isPlaying && !state.isStarting;
       ui.playState.textContent = state.isStarting ? 'Starting' : state.isPlaying ? 'Playing' : 'Ready';
-      ui.transportHint.textContent = empty ? 'Save a loop, then Add to arrangement to hear a song.' : silent ? 'All layers are muted. Turn on a layer in the loop editor.' : state.playMode === 'timeline' ? 'Saved clips play in order. Choose This loop to hear editor changes.' : state.isPlaying ? 'Your loop repeats. Shape it while it plays, or Stop anytime.' : 'Ready when you are. Press Play to hear your loop.';
+      ui.transportHint.textContent = empty ? 'Save a loop, then Add to arrangement to hear a song.' : silent ? 'All layers are muted. Turn on a layer in the loop editor.' : state.playMode === 'timeline' ? 'Saved clips play in order. Use Play from here on a clip to start there; This loop hears editor changes.' : state.isPlaying ? 'Your loop repeats. Shape it while it plays, or Stop anytime.' : 'Ready when you are. Press Play to hear your loop.';
       ui.clearTimelineBtn.disabled = !state.timeline.length;
       ui.exportTimelineBtn.disabled = !state.timeline.length;
       ui.saveLoopBtn.textContent = state.playMode === 'timeline' ? 'Save editor loop' : 'Save loop';
@@ -1021,7 +1020,7 @@
 
       state.timeline.forEach((clip, index) => {
         const item = document.createElement("div");
-        item.className = "timeline-item" + (state.isPlaying && state.playMode === "timeline" && index === state.activeTimelineClipIndex ? " playing" : "");
+        item.className = "timeline-item" + ((state.isPlaying || state.isStarting) && state.playMode === "timeline" && index === state.activeTimelineClipIndex ? " playing" : "");
         item.draggable = true;
         item.dataset.timelineId = clip.id;
         item.innerHTML = `
@@ -1033,6 +1032,7 @@
             <span class="pill">${clip.params.bars} bars</span>
           </div>
           <div class="timeline-actions">
+            <button class="secondary" data-play-clip>▶ Play from here</button>
             <button class="ghost">Edit copy</button>
             <button class="ghost">Copy</button>
             <button class="stop">Remove</button>
@@ -1042,7 +1042,9 @@
         `;
         item.querySelector(".loop-name").textContent = clip.name;
 
-        const [editBtn, copyBtn, removeBtn, earlierBtn, laterBtn] = item.querySelectorAll("button");
+        const [playBtn, editBtn, copyBtn, removeBtn, earlierBtn, laterBtn] = item.querySelectorAll("button");
+        playBtn.setAttribute('aria-label', `Play arrangement from ${clip.name}`);
+        playBtn.onclick = () => playTimelineFrom(clip.id);
         earlierBtn.disabled = index === 0;
         laterBtn.disabled = index === state.timeline.length - 1;
         earlierBtn.onclick = () => moveTimelineBy(clip.id, -1);
@@ -1261,7 +1263,16 @@
       }, 25);
     }
 
-    async function startPlayback() {
+    function playTimelineFrom(id) {
+      if (!state.timeline.some(clip => clip.id === id)) return;
+      stopPlayback();
+      state.playMode = 'timeline';
+      syncInputs();
+      refreshUI();
+      return startPlayback(id);
+    }
+
+    async function startPlayback(startClipId = null) {
       if (state.isPlaying || state.isStarting) return;
       const request = ++playRequest;
       readInputs();
@@ -1270,6 +1281,10 @@
         return;
       }
       state.isStarting = true;
+      if (startClipId !== null) {
+        state.activeTimelineClipIndex = state.timeline.findIndex(clip => clip.id === startClipId);
+        refreshPreview(); renderStepGrids(previewClip()?.loop); renderTimeline();
+      }
       updatePlaybackControls();
       try {
         initAudio();
@@ -1277,25 +1292,33 @@
       } catch (error) {
         if (request === playRequest) {
           state.isStarting = false; updatePlaybackControls();
+          if (startClipId !== null) { refreshPreview(); renderStepGrids(previewClip()?.loop); renderTimeline(); }
           projectStatus('Could not start sound. Try Play again. ' + error.message, true);
         }
         return;
       }
 
       if (request !== playRequest) return;
+      const startIndex = startClipId === null ? 0 : state.timeline.findIndex(clip => clip.id === startClipId);
+      if (startIndex < 0) {
+        stopPlayback();
+        projectStatus('That clip was removed before playback started. Choose another clip.', true);
+        return;
+      }
       if (!state.loop) generateLoop();
       if (state.isPlaying) return;
 
       state.audio.master.gain.setValueAtTime(.72, state.audio.ctx.currentTime);
       state.isStarting = false;
       state.isPlaying = true;
-      state.stepIndex = 0;
+      state.stepIndex = startClipId === null ? 0 : state.timeline.slice(0,startIndex).reduce((steps,clip) => steps + clip.loop.totalSteps, 0);
       state.currentBar = 0;
       state.currentStepInBar = 0;
-      state.activeTimelineClipIndex = 0;
+      state.activeTimelineClipIndex = startIndex;
       state.nextStepTime = state.audio.ctx.currentTime + 0.05;
       startTransportLoop();
       updatePlaybackControls();
+      if (startClipId !== null) { refreshPreview(); renderStepGrids(previewClip()?.loop); renderTimeline(); }
     }
 
     function stopPlayback() {
@@ -1583,7 +1606,7 @@
       ui.variationTrack.addEventListener('change', updateVariationChoices);
       ui.varyBtn.onclick = varyCurrentLayer;
 
-      ui.playBtn.onclick = startPlayback;
+      ui.playBtn.onclick = () => startPlayback();
       ui.stopBtn.onclick = stopPlayback;
       ui.randomBtn.onclick = randomizeSettings;
       ui.rerollBtn.onclick = () => {

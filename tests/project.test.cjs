@@ -80,7 +80,7 @@ test('Stop invalidates a pending audio resume before it can restart transport', 
   let resolve, starts=0;
   const state={audio:{ctx:{state:'suspended',resume:()=>new Promise(r=>resolve=r),currentTime:0}},params:{bars:4},loop:{},timeline:[],playMode:'loop',isPlaying:false};
   const ctx=vm.createContext({state,ui:{playState:{},currentBar:{},currentStep:{}},initAudio(){},readInputs(){},generateLoop(){},updatePlaybackControls(){},refreshPreview(){},previewClip(){return {loop:state.loop};},renderStepGrids(){},renderTimeline(){},clearInterval(){},startTransportLoop(){starts++;}});
-  vm.runInContext('let playRequest=0;'+html.slice(html.indexOf('    async function startPlayback()'),html.indexOf('    function renderStepGrid(')),ctx);
+  vm.runInContext('let playRequest=0;'+html.slice(html.indexOf('    async function startPlayback('),html.indexOf('    function renderStepGrid(')),ctx);
   const start=vm.runInContext('startPlayback()',ctx);vm.runInContext('stopPlayback()',ctx);resolve();await start;
   assert.equal(starts,0);assert.equal(state.isPlaying,false);
 });

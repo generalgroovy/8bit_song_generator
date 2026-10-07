@@ -69,6 +69,18 @@ try {
     await page.locator('#savedLoops .loop-chip').first().getByRole('button',{name:'Add to arrangement',exact:true}).click();
     await page.locator('#timelineItems .timeline-item').nth(1).getByRole('button',{name:'Move clip earlier',exact:true}).click();
     assert.deepEqual(await page.locator('#timelineItems .loop-name').allTextContents(),['Chorus','Verse']);
+    const musicBeforePreview=await page.evaluate(()=>({loop:state.loop,saved:state.savedLoops,timeline:state.timeline,history:projectHistory.past.length}));
+    await page.locator('#modeLoop').check();
+    await page.locator('#timelineItems .timeline-item').nth(1).getByRole('button',{name:'Play arrangement from Verse',exact:true}).click();
+    await page.waitForFunction(()=>state.isPlaying);
+    assert.equal(await page.locator('#modeTimeline').isChecked(),true);
+    assert.equal(await page.locator('#songTitle').textContent(),'Verse');
+    assert.equal(await page.locator('#timelineItems .timeline-item').nth(1).evaluate(el=>el.classList.contains('playing')),true);
+    assert.equal(await page.evaluate(()=>document.activeElement.getAttribute('aria-label')),'Play arrangement from Verse');
+    assert.deepEqual(await page.evaluate(()=>({loop:state.loop,saved:state.savedLoops,timeline:state.timeline,history:projectHistory.past.length})),musicBeforePreview);
+    await page.screenshot({path:path.join(output,`clip-start-${width}.png`),fullPage:true});
+    await page.locator('#stopBtn').click();
+    assert.equal(await page.evaluate(()=>state.isPlaying),false);
     await page.locator('#modeTimeline').check();assert.equal(await page.locator('#songTitle').textContent(),'Chorus');
     await page.locator('#timelineItems .timeline-item').nth(1).getByRole('button',{name:'Edit copy',exact:true}).click();
     assert.equal(await page.locator('#modeLoop').isChecked(),true);assert.equal(await page.locator('#keySelect').evaluate(el=>el===document.activeElement),true);

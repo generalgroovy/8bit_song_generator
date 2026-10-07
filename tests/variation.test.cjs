@@ -110,7 +110,7 @@ test('audio resume errors stay stopped and report recoverable feedback', async (
   let message='';
   const state={audio:{ctx:{state:'suspended',resume:async()=>{throw Error('Unavailable');}}},params:{},timeline:[],playMode:'loop',isPlaying:false};
   const ctx=vm.createContext({state,readInputs(){},initAudio(){},updatePlaybackControls(){},projectStatus:m=>message=m});
-  vm.runInContext('let playRequest=0;'+html.slice(html.indexOf('    async function startPlayback()'),html.indexOf('    function stopPlayback()')),ctx);
+  vm.runInContext('let playRequest=0;'+html.slice(html.indexOf('    async function startPlayback('),html.indexOf('    function stopPlayback()')),ctx);
   await vm.runInContext('startPlayback()',ctx);
   assert.equal(state.isPlaying,false);assert.match(message,/Try Play again/);
 });
