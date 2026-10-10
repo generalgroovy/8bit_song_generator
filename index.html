@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>8-Bit Loop Generator</title>
   <style>
-    :root { --bg:#101421; --panel:#171d2e; --panel-2:#222b43; --text:#edf2ff; --muted:#b0bbd5; --accent:#91edc5; --accent-2:#b0c9ff; --danger:#ffa0b5; --border:#39445d; }
+    :root { --bg:#161819; --panel:#1d2022; --panel-2:#282d30; --text:#f1f0e9; --muted:#b9bebb; --accent:#f3c66f; --accent-2:#a7d7e0; --danger:#ffa7a0; --border:#464e51; }
     * { box-sizing:border-box; }
-    body { margin:0; padding:24px; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:radial-gradient(ellipse at top left,#223347 0,transparent 45%),var(--bg); color:var(--text); line-height:1.5; }
+    body { margin:0; padding:24px; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
     .app { max-width:1260px; margin:auto; display:grid; grid-template-columns:340px minmax(0,1fr); gap:20px; }
-    .panel { background:var(--panel); border:1px solid var(--border); border-radius:20px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:5px; }
     .studio-header { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:16px 28px; padding:20px 24px; }
     .brand { display:flex; align-items:center; gap:14px; }
     .brand-mark { display:grid; place-items:center; width:52px; height:52px; flex:none; border-radius:14px; color:var(--accent); background:#293b3d; font-size:2rem; }
@@ -18,7 +18,7 @@
     h2 { margin:0; font-size:1.12rem; letter-spacing:-.015em; }
     h3 { font-size:.9rem; }
     p { margin:8px 0; }
-    button,select,input[type="number"],input[type="text"] { font:inherit; width:100%; min-height:44px; border-radius:10px; }
+    button,select,input[type="number"],input[type="text"] { font:inherit; width:100%; min-height:44px; border-radius:4px; }
     button { border:1px solid transparent; padding:10px 12px; font-size:.9rem; font-weight:650; color:#101921; background:var(--accent); cursor:pointer; }
     button:hover:not(:disabled) { filter:brightness(1.08); }
     button.secondary { background:var(--accent-2); }
@@ -49,7 +49,7 @@
     select,input[type="number"],input[type="text"] { color:var(--text); background:var(--panel-2); border:1px solid var(--border); padding:8px 10px; font-size:.9rem; min-width:0; }
     input[type="range"] { width:100%; min-height:32px; margin:0; accent-color:var(--accent); cursor:pointer; }
     .compose-actions { margin:6px 0 14px; }
-    .toggle { min-height:44px; display:flex; align-items:center; gap:8px; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-size:.86rem; cursor:pointer; }
+    .toggle { min-height:44px; display:flex; align-items:center; gap:8px; background:var(--panel-2); border:1px solid var(--border); border-radius:4px; padding:8px 10px; font-size:.86rem; cursor:pointer; }
     .toggle:has(input:not(:checked)) { color:var(--muted); background:transparent; }
     .export-row { margin-top:10px; }
     .small,.project-info p { color:var(--muted); line-height:1.5; font-size:.84rem; }
@@ -61,20 +61,20 @@
     .label { color:var(--muted); font-size:.78rem; margin-bottom:3px; }
     .meta,.loop-meta { display:flex; flex-wrap:wrap; gap:8px 16px; font-size:.8rem; color:var(--muted); margin:8px 0 12px; }
     .pill { border:1px solid var(--border); border-radius:8px; padding:4px 8px; color:var(--muted); font-size:.8rem; white-space:nowrap; }
-    canvas { display:block; width:100%; height:100px; background:#0e1522; border-radius:10px; }
+    canvas { display:block; width:100%; height:100px; background:#0e1522; border-radius:4px; }
     .playhead { display:flex; justify-content:space-between; gap:12px; margin-top:10px; color:var(--muted); font-size:.78rem; font-variant-numeric:tabular-nums; }
     .playhead strong { font-weight:500; color:var(--text); }
     .save-current { display:grid; grid-template-columns:1fr auto; align-items:end; gap:10px; margin-top:12px; }
     .save-current .field { margin:0; }
     #clipStatus:empty { display:none; }
     .saved-loops { display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr)); margin-top:14px; }
-    .empty-state { padding:14px; border-radius:10px; background:var(--panel-2); }
-    .loop-chip,.timeline-item { padding:14px; border:1px solid var(--border); border-radius:12px; min-width:0; background:#1d2538; }
+    .empty-state { padding:14px; border-radius:4px; background:var(--panel-2); }
+    .loop-chip,.timeline-item { padding:14px; border:1px solid var(--border); border-radius:4px; min-width:0; background:#1d2538; }
     .loop-top { display:flex; align-items:start; justify-content:space-between; gap:8px; }
     .loop-name { font-weight:650; overflow-wrap:anywhere; }
     .loop-actions { grid-template-columns:1fr 1fr; }
     .loop-actions button:nth-child(2) { grid-column:1/-1; grid-row:1; background:#2c4149; border-color:#4a6d72; color:var(--accent); }
-    .timeline-dropzone { margin-top:14px; min-height:100px; border:1px dashed #657290; padding:12px; border-radius:12px; }
+    .timeline-dropzone { margin-top:14px; min-height:100px; border:1px dashed #657290; padding:12px; border-radius:4px; }
     .timeline-dropzone.dragover { border-color:var(--accent); background:#243b3b; }
     .timeline-items { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr)); gap:10px; }
     .timeline-item { position:relative; }
@@ -91,7 +91,7 @@
     .step { aspect-ratio:1/1; border-radius:3px; background:#293249; border:1px solid var(--border); }
     .step.active { background:#477c71; }
     .step.playing { outline:2px solid var(--accent-2); outline-offset:-2px; }
-    .tooltip { position:fixed; z-index:1000; max-width:min(280px,calc(100vw - 24px)); pointer-events:none; background:#090f1b; border:1px solid var(--border); color:var(--text); padding:10px 12px; border-radius:10px; font-size:.8rem; line-height:1.5; opacity:0; }
+    .tooltip { position:fixed; z-index:1000; max-width:min(280px,calc(100vw - 24px)); pointer-events:none; background:#090f1b; border:1px solid var(--border); color:var(--text); padding:10px 12px; border-radius:4px; font-size:.8rem; line-height:1.5; opacity:0; }
     .tooltip.visible { opacity:1; }
     .hidden,[hidden] { display:none !important; }
     .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
@@ -103,7 +103,7 @@
 <body>
   <div class="app">
     <header class="panel studio-header">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">♫</span><div><h1>8-Bit Music</h1><p>A little loop. A whole world of possibilities.</p></div></div>
+      <div class="brand"><div><h1>8-Bit Music</h1><p>Chiptune loops &amp; arrangements</p></div></div>
       <div class="transport">
         <fieldset class="mode-row"><legend>Hear</legend>
           <label class="mode-chip"><input type="radio" name="playMode" value="loop" id="modeLoop" checked> This loop</label>
@@ -113,7 +113,7 @@
           <button id="playBtn" aria-describedby="transportHint">▶ Play loop</button>
           <button id="stopBtn" class="ghost" disabled>■ Stop</button>
         </div>
-        <p id="transportHint" class="small">Ready when you are. Press Play to hear your loop.</p>
+        <p id="transportHint" class="small">Press Play to hear this loop.</p>
       </div>
       <div class="feedback-row">
         <p id="projectStatus" class="small" role="status" aria-live="polite"></p>
@@ -123,7 +123,7 @@
     </header>
     <aside class="panel controls" aria-label="Loop editor">
       <div class="section">
-        <h2>Make it yours</h2>
+        <h2>Loop settings</h2>
         <div class="field-grid">
           <div class="field">
             <label for="keySelect">Key</label>
@@ -298,22 +298,22 @@
         <div class="tracks"><div><h3>Lead</h3><div class="steps" id="leadSteps"></div></div><div><h3>Bass</h3><div class="steps" id="bassSteps"></div></div><div><h3>Drums</h3><div class="steps" id="drumSteps"></div></div></div>
       </section>
       <section class="panel library-panel" aria-labelledby="libraryHeading">
-        <div class="panel-head"><h2 id="libraryHeading">Keep a good loop</h2><span class="small">Saved clips</span></div>
+        <div class="panel-head"><h2 id="libraryHeading">Saved loops</h2></div>
         <div class="save-current"><div class="field"><label for="loopNameInput">Loop name</label><input id="loopNameInput" maxlength="120" type="text" value="New Loop" placeholder="Give this loop a name"></div><button id="saveLoopBtn" class="secondary">Save loop</button></div>
         <p id="clipStatus" class="small" role="status"></p>
         <div id="savedLoops" class="saved-loops"></div>
       </section>
       <section class="panel timeline-panel" aria-labelledby="arrangementHeading">
-        <div class="panel-head"><h2 id="arrangementHeading">Build an arrangement</h2><span class="small"><span id="timelineCount">0 clips</span> · <span id="timelineDuration">0.0s total</span></span></div>
+        <div class="panel-head"><h2 id="arrangementHeading">Arrangement</h2><span class="small"><span id="timelineCount">0 clips</span> · <span id="timelineDuration">0.0s total</span></span></div>
         <div id="timelineDropzone" class="timeline-dropzone">
-          <div id="timelineEmpty" class="small">Save a loop above, then choose Add to arrangement. Repeat, reorder, make it yours.</div>
+          <div id="timelineEmpty" class="small">Save a loop, then choose Add to arrangement on its card.</div>
           <div id="timelineItems" class="timeline-items"></div>
         </div>
         <div class="arrangement-footer"><p class="small">Play from any clip to hear it in context. Playback continues in order, then repeats. Editing a copy keeps saved clips intact.</p><button id="clearTimelineBtn" class="ghost" disabled>Clear arrangement</button></div>
       </section>
       <details class="panel pattern-details">
         <summary>Inside the pattern</summary>
-        <div class="meta"><span id="metaScale">Minor</span><span id="metaSeed">Seed 4312</span><span id="moodLabel">Bouncy</span></div>
+        <div class="meta"><span id="metaScale">Minor</span><span id="metaSeed">Seed 4312</span><span id="moodLabel"></span></div>
         <p class="small" id="moodDetail"></p><p class="small" id="loopSummary"></p>
       </details>
     </main>
@@ -731,31 +731,6 @@
       refreshUI();
     }
 
-    function describeMood() {
-      const p = state.params;
-      const moods = [];
-
-      if ([
-        "minor", "harmonic_minor", "melodic_minor", "phrygian", "locrian",
-        "hungarian_minor", "persian", "romanian_minor", "double_harmonic",
-        "phrygian_dominant", "altered", "iwato", "in_sen", "enigmatic"
-      ].includes(p.scale)) moods.push("moody");
-
-      if ([
-        "major", "lydian", "mixolydian", "pentatonic_major", "yo", "bebop_major"
-      ].includes(p.scale)) moods.push("bright");
-
-      if (p.tempo >= 150) moods.push("hyper");
-      else if (p.tempo <= 95) moods.push("laid-back");
-      else moods.push("bouncy");
-
-      if (p.swing >= 0.2) moods.push("shuffled");
-      if (p.variation >= 0.68) moods.push("playful");
-      if (p.crunch >= 0.7) moods.push("crunchy");
-
-      return moods;
-    }
-
     function getTimelineDurationSeconds() {
       return state.timeline.reduce((s, c) => s + c.loop.totalSteps * (60 / c.params.tempo / 4), 0);
     }
@@ -767,7 +742,7 @@
     function refreshPreview(clip = previewClip()) {
       const p = clip?.params;
       ui.previewLabel.textContent = state.playMode === 'timeline' ? 'Arrangement preview' : 'Your loop';
-      ui.songTitle.textContent = p ? (state.playMode === 'timeline' ? clip.name : `${p.key} ${prettyScaleName(p.scale)} loop`) : 'Your song starts here';
+      ui.songTitle.textContent = p ? (state.playMode === 'timeline' ? clip.name : `${p.key} ${prettyScaleName(p.scale)} loop`) : 'Empty arrangement';
       ui.metaTempo.textContent = p ? `${p.tempo} BPM` : 'Add your first clip';
       ui.metaBars.textContent = p ? `${p.bars} ${p.bars === 1 ? 'bar' : 'bars'}` : '';
       ui.metaMode.textContent = state.playMode === 'timeline' ? 'Arrangement' : 'This loop';
@@ -784,7 +759,7 @@
       ui.playBtn.disabled = empty || state.isPlaying || state.isStarting;
       ui.stopBtn.disabled = !state.isPlaying && !state.isStarting;
       ui.playState.textContent = state.isStarting ? 'Starting' : state.isPlaying ? 'Playing' : 'Ready';
-      ui.transportHint.textContent = empty ? 'Save a loop, then Add to arrangement to hear a song.' : silent ? 'All layers are muted. Turn on a layer in the loop editor.' : state.playMode === 'timeline' ? 'Saved clips play in order. Use Play from here on a clip to start there; This loop hears editor changes.' : state.isPlaying ? 'Your loop repeats. Shape it while it plays, or Stop anytime.' : 'Ready when you are. Press Play to hear your loop.';
+      ui.transportHint.textContent = empty ? 'Save a loop, then Add to arrangement to hear a song.' : silent ? 'All layers are muted. Turn on a layer in the loop editor.' : state.playMode === 'timeline' ? 'Clips play in order and repeat. Choose This loop to hear editor changes.' : state.isPlaying ? 'Looping. Changes apply during playback.' : 'Press Play to hear this loop.';
       ui.clearTimelineBtn.disabled = !state.timeline.length;
       ui.exportTimelineBtn.disabled = !state.timeline.length;
       ui.saveLoopBtn.textContent = state.playMode === 'timeline' ? 'Save editor loop' : 'Save loop';
@@ -805,8 +780,7 @@
       ui.metaScale.textContent = prettyScaleName(p.scale);
       ui.metaSeed.textContent = `Seed ${p.seed}`;
 
-      const moods = describeMood();
-      ui.moodLabel.textContent = (moods[1] || "retro").replace(/^./, m => m.toUpperCase());
+      ui.moodLabel.textContent = `${Math.round(p.density * 100)}% note density`;
       ui.moodDetail.textContent = `${p.leadWave[0].toUpperCase() + p.leadWave.slice(1)} lead with ${Math.round(p.swing * 100)}% swing and ${Math.round(p.variation * 100)}% variation.`;
       ui.loopSummary.textContent = `Generated ${p.key} ${prettyScaleName(p.scale)} loop with ${p.leadOn ? "lead" : "no lead"}, ${p.bassOn ? "bass" : "no bass"}, ${p.drumsOn ? "drums" : "no drums"}, and ${p.harmonyOn ? "harmony pads" : "no harmony"}.`;
       ui.timelineCount.textContent = `${state.timeline.length} ${state.timeline.length === 1 ? 'clip' : 'clips'}`;
@@ -973,7 +947,7 @@
       const restoreFocus = preserveClipFocus(ui.savedLoops,'data-loop-id');
       ui.savedLoops.innerHTML = "";
       if (!state.savedLoops.length) {
-        ui.savedLoops.innerHTML = '<div class="small empty-state">Like what you hear? Name it and Save loop above. Your first clip is one click away.</div>';
+        ui.savedLoops.innerHTML = '<div class="small empty-state">No saved loops. Enter a name and select Save loop.</div>';
         restoreFocus();
         return;
       }

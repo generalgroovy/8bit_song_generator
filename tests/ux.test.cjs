@@ -26,7 +26,7 @@ test('play controls explain empty arrangements, prevent duplicate starts and all
 test('preview follows actual arrangement clips and shows a useful empty state without editor fallback',()=>{
   const app=preview();app.run('refreshPreview()');assert.equal(app.ui.songTitle.textContent,'C minor loop');
   app.state.playMode='timeline';app.run('refreshPreview()');assert.equal(app.run('previewClip()'),undefined);
-  assert.equal(app.ui.currentBar.textContent,'—');assert.equal(app.ui.songTitle.textContent,'Your song starts here');
+  assert.equal(app.ui.currentBar.textContent,'—');assert.equal(app.ui.songTitle.textContent,'Empty arrangement');
   app.state.timeline=[{name:'Verse',params:{tempo:95,bars:2},loop:{id:'verse'}},{name:'Chorus',params:{tempo:160,bars:8},loop:{id:'chorus'}}];
   app.run('refreshPreview()');assert.equal(app.ui.songTitle.textContent,'Verse');assert.equal(app.ui.metaTempo.textContent,'95 BPM');assert.equal(app.ui.currentBar.textContent,'1 / 2');
   app.state.isPlaying=true;app.state.activeTimelineClipIndex=1;app.run('refreshPreview()');

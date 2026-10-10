@@ -10,12 +10,12 @@
 
 [Project overview](https://generalgroovy.web.app/apps/8-bit-loop-generator/) · [Project-state implementation](project-state.js) · [Tests](tests/)
 
-## Make a loop, keep it, build a song
+## Generate, save and arrange
 
 1. Choose **This loop** and press **Play loop**. The notes and current bar are visible beside the editor. **Stop** cancels sound, including a pending audio start.
 2. **New pattern** keeps your settings and changes the notes. **Surprise me** changes the musical settings too. Both are undoable. Key, scale and length are immediately available; **Melody & rhythm** and **Sound** reveal deeper choices.
 3. Open **Shape one layer** to vary Lead, Bass, Drums or Harmony across the whole loop or one bar. **A little / Half / All** replaces that fraction of the differing steps. Other layers and saved clips stay intact. **Undo / Redo** lets you compare.
-4. In **Keep a good loop**, name the loop and choose **Save loop**. This saves the exact notes and sound settings as an independent clip. Choose **Add to arrangement** on a clip to place it in your song.
+4. In **Saved loops**, name the loop and choose **Save loop**. This saves the exact notes and sound settings as an independent clip. Choose **Add to arrangement** on a clip to place it in your song.
 5. Use the arrangement's **↑ / ↓** controls or drag to reorder; **Copy** repeats a clip and **Remove** removes it. **Play from here** starts at that clip, selects **Arrangement** and continues through later clips before repeating from the beginning. The preview and highlighted card follow the playing clip. The editor notes, saved clips and Undo history stay intact. **Stop** cancels playback or a pending audio start; the main **Play arrangement** button starts again from clip one. Empty arrangements explain how to get started.
 6. **Edit copy** opens a separate loop editor copy and selects **This loop**. Save it again to keep your new version; existing saved and arranged clips remain independent.
 7. Open **Project & downloads** for **Download project** (an editable JSON backup), **Open project**, **Loop WAV** or **Arrangement WAV**. Audio downloads are mono 44.1 kHz, 16-bit PCM WAV, up to ten minutes. The separate renderer does not reproduce live echo, crunch or exact drum timbre.
